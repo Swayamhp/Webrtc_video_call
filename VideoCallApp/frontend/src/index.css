@@ -1,0 +1,9 @@
+/* In your src/index.css or src/App.css */
+@import "tailwindcss";
+
+
+/* Then use it in your CSS */
+
+:root {
+  font-family: 'Albert Sans', sans-serif;
+}
