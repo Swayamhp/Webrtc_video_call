@@ -52,25 +52,46 @@ const VideoCallPage: React.FC = () => {
   const [connectionQuality, setConnectionQuality] = useState<string>("unknown");
   const [isMonitoring, setIsMonitoring] = useState(false);
 
-  // WebRTC Configuration
-  const rtcConfig = {
-    iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' },
-      {
-        urls: 'turn:openrelay.metered.ca:80',
-        username: 'openrelayproject',
-        credential: 'openrelayproject'
-      },
-      {
-        urls: 'turn:openrelay.metered.ca:443',
-        username: 'openrelayproject',
-        credential: 'openrelayproject'
-      },
-    ],
-    iceCandidatePoolSize: 10,
-    iceTransportPolicy: 'all'
-  };
+const rtcConfig = {
+  iceServers: [
+    // STUN servers
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun.voipgate.com:3478' },
+    
+    // Critical: More reliable TURN servers
+    {
+      urls: 'turn:relay1.expressturn.com:3478',
+      username: 'efSNdhS61TZR72ZR6h',
+      credential: 'D5DZj4qEeJ4Z6BZz'
+    },
+    {
+      urls: 'turn:relay2.expressturn.com:3478',
+      username: 'efSNdhS61TZR72ZR6h',
+      credential: 'D5DZj4qEeJ4Z6BZz'
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:80',
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443',
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    }
+  ],
+  iceCandidatePoolSize: 10,
+  iceTransportPolicy: 'all',
+  bundlePolicy: 'max-bundle',
+  rtcpMuxPolicy: 'require'
+};
 
   // Connection monitoring refs
   const statsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -500,7 +521,7 @@ const VideoCallPage: React.FC = () => {
 
   // Initialize Socket Connection - AUTO START MEDIA
   useEffect(() => {
-    const socket = io("http://localhost:3001", {
+    const socket = io("https://webrtc-video-call-kfpm.onrender.com", {
       transports: ["websocket", "polling"],
     });
 
