@@ -4,14 +4,14 @@ import { useParams, useNavigate } from "react-router-dom";
 import io, { Socket } from "socket.io-client";
 
 // Connection monitoring interface
-interface ConnectionStats {
-  videoBytesReceived: number;
-  videoBytesSent: number;
-  audioBytesReceived: number;
-  audioBytesSent: number;
-  packetsLost: number;
-  lastPacketReceived: number;
-}
+// interface ConnectionStats {
+//   videoBytesReceived: number;
+//   videoBytesSent: number;
+//   audioBytesReceived: number;
+//   audioBytesSent: number;
+//   packetsLost: number;
+//   lastPacketReceived: number;
+// }
 
 interface WebRtcDebug {
   pcCreated: boolean;
@@ -43,23 +43,23 @@ const VideoCallPage: React.FC = () => {
   const [hasRemoteUser, setHasRemoteUser] = useState(false);
   const [isCallActive, setIsCallActive] = useState(false);
   const [isMakingOffer, setIsMakingOffer] = useState(false);
-  const [isIgnoringOffer, setIsIgnoringOffer] = useState(false);
+  // const [isIgnoringOffer, setIsIgnoringOffer] = useState(false);
   const [userId] = useState(
     () => `user-${Math.random().toString(36).substr(2, 9)}`
   );
 
-  // Enhanced connection monitoring state
-  const [connectionStatus, setConnectionStatus] = useState<string>("disconnected");
-  const [iceConnectionStatus, setIceConnectionStatus] = useState<string>("new");
-  const [signalingStatus, setSignalingStatus] = useState<string>("stable");
-  const [connectionStats, setConnectionStats] = useState<ConnectionStats>({
-    videoBytesReceived: 0,
-    videoBytesSent: 0,
-    audioBytesReceived: 0,
-    audioBytesSent: 0,
-    packetsLost: 0,
-    lastPacketReceived: Date.now(),
-  });
+  // // Enhanced connection monitoring state
+  // const [connectionStatus, setConnectionStatus] = useState<string>("disconnected");
+  // const [iceConnectionStatus, setIceConnectionStatus] = useState<string>("new");
+  // const [signalingStatus, setSignalingStatus] = useState<string>("stable");
+  // const [connectionStats, setConnectionStats] = useState<ConnectionStats>({
+  //   videoBytesReceived: 0,
+  //   videoBytesSent: 0,
+  //   audioBytesReceived: 0,
+  //   audioBytesSent: 0,
+  //   packetsLost: 0,
+  //   lastPacketReceived: Date.now(),
+  // });
   const [connectionQuality, setConnectionQuality] = useState<string>("unknown");
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [webrtcDebug, setWebrtcDebug] = useState<WebRtcDebug>({
@@ -74,7 +74,7 @@ const VideoCallPage: React.FC = () => {
   });
 
   // Enhanced WebRTC Configuration
-  const rtcConfig = {
+  const rtcConfig :RTCConfiguration= {
     iceServers: [
       // Primary STUN servers
       { urls: 'stun:stun.l.google.com:19302' },
@@ -224,9 +224,9 @@ const VideoCallPage: React.FC = () => {
     try {
       const stats = await peerConnectionRef.current.getStats();
       let videoBytesReceived = 0;
-      let videoBytesSent = 0;
+      // let videoBytesSent = 0;
       let audioBytesReceived = 0;
-      let audioBytesSent = 0;
+      // let audioBytesSent = 0;
       let packetsLost = 0;
 
       stats.forEach((report) => {
@@ -242,9 +242,9 @@ const VideoCallPage: React.FC = () => {
 
         if (report.type === "outbound-rtp" && !report.isRemote) {
           if (report.kind === "video") {
-            videoBytesSent = report.bytesSent || 0;
+            // videoBytesSent = report.bytesSent || 0;
           } else if (report.kind === "audio") {
-            audioBytesSent = report.bytesSent || 0;
+            // audioBytesSent = report.bytesSent || 0;
           }
         }
       });
@@ -272,14 +272,14 @@ const VideoCallPage: React.FC = () => {
       }
 
       setConnectionQuality(quality);
-      setConnectionStats({
-        videoBytesReceived,
-        videoBytesSent,
-        audioBytesReceived,
-        audioBytesSent,
-        packetsLost,
-        lastPacketReceived: lastPacketReceivedRef.current,
-      });
+      // setConnectionStats({
+      //   videoBytesReceived,
+      //   videoBytesSent,
+      //   audioBytesReceived,
+      //   audioBytesSent,
+      //   packetsLost,
+      //   lastPacketReceived: lastPacketReceivedRef.current,
+      // });
 
       lastVideoBytesReceivedRef.current = videoBytesReceived;
       lastAudioBytesReceivedRef.current = audioBytesReceived;
@@ -309,7 +309,7 @@ const VideoCallPage: React.FC = () => {
   };
 
   const handleConnectionFailure = () => {
-    setConnectionStatus("failed");
+    // setConnectionStatus("failed");
     setConnectionQuality("disconnected");
   };
 
@@ -319,8 +319,8 @@ const VideoCallPage: React.FC = () => {
 
     const state = peerConnectionRef.current.connectionState;
     addDebugLog(`🔗 Connection state changed: ${state}`);
-    setConnectionStatus(state);
-    setWebrtcDebug(prev => ({ ...prev, connectionState: state }));
+    // setConnectionStatus(state);
+    // setWebrtcDebug(prev => ({ ...prev, connectionState: state }));
 
     switch (state) {
       case "connected":
@@ -355,7 +355,7 @@ const VideoCallPage: React.FC = () => {
 
     const state = peerConnectionRef.current.iceConnectionState;
     addDebugLog(`❄️ ICE connection state: ${state}`);
-    setIceConnectionStatus(state);
+    // setIceConnectionStatus(state);
     setWebrtcDebug(prev => ({ ...prev, iceConnectionState: state }));
 
     if (state === 'connected') {
@@ -376,18 +376,18 @@ const VideoCallPage: React.FC = () => {
 
     const state = peerConnectionRef.current.signalingState;
     addDebugLog(`📶 Signaling state: ${state}`);
-    setSignalingStatus(state);
+    // setSignalingStatus(state);
     setWebrtcDebug(prev => ({ ...prev, signalingState: state }));
   };
 
   // Check if video call is actively transmitting media
-  const isVideoCallActive = (): boolean => {
-    return (
-      connectionStatus === "connected" &&
-      iceConnectionStatus === "connected" &&
-      connectionQuality !== "disconnected"
-    );
-  };
+  // const isVideoCallActive = (): boolean => {
+  //   return (
+  //     connectionStatus === "connected" &&
+  //     iceConnectionStatus === "connected" &&
+  //     connectionQuality !== "disconnected"
+  //   );
+  // };
 
   // Initialize Media Stream - AUTO START
   const initializeMedia = async () => {
@@ -569,11 +569,11 @@ const VideoCallPage: React.FC = () => {
       // Check if we should ignore this offer (race condition prevention)
       if (isMakingOffer || peerConnection.signalingState !== "stable") {
         addDebugLog("🚫 Ignoring offer - already making offer or not stable");
-        setIsIgnoringOffer(true);
+        // setIsIgnoringOffer(true);
         return;
       }
 
-      setIsIgnoringOffer(false);
+      // setIsIgnoringOffer(false);
       addDebugLog("🔧 Setting remote description (offer)...");
 
       await peerConnection.setRemoteDescription(offer);
@@ -772,9 +772,9 @@ const VideoCallPage: React.FC = () => {
 
     setHasRemoteUser(false);
     setIsMakingOffer(false);
-    setIsIgnoringOffer(false);
-    setConnectionStatus("closed");
-    setIceConnectionStatus("closed");
+    // setIsIgnoringOffer(false);
+    // setConnectionStatus("closed");
+    // setIceConnectionStatus("closed");
     setConnectionQuality("disconnected");
     setWebrtcDebug({
       pcCreated: false,
@@ -858,22 +858,22 @@ const VideoCallPage: React.FC = () => {
   };
 
   // Get connection status color
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "connected":
-        return "bg-green-500";
-      case "connecting":
-        return "bg-yellow-500";
-      case "disconnected":
-        return "bg-yellow-500";
-      case "failed":
-        return "bg-red-500";
-      case "closed":
-        return "bg-gray-500";
-      default:
-        return "bg-gray-500";
-    }
-  };
+  // const getStatusColor = (status: string) => {
+  //   switch (status) {
+  //     case "connected":
+  //       return "bg-green-500";
+  //     case "connecting":
+  //       return "bg-yellow-500";
+  //     case "disconnected":
+  //       return "bg-yellow-500";
+  //     case "failed":
+  //       return "bg-red-500";
+  //     case "closed":
+  //       return "bg-gray-500";
+  //     default:
+  //       return "bg-gray-500";
+  //   }
+  // };
 
   return (
     <div className="min-h-screen bg-gray-900">
