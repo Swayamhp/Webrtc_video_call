@@ -1028,7 +1028,7 @@ const VideoCallPage: React.FC = () => {
                 ref={remoteVideoRef}
                 autoPlay
                 playsInline
-                className="w-full h-full object-cover rounded-lg"
+                className="w-full h-full rounded-lg"
               ></video>
 
               {/* Waiting for remote participant */}
