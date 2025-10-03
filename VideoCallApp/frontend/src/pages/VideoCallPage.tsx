@@ -13,6 +13,17 @@ interface ConnectionStats {
   lastPacketReceived: number;
 }
 
+interface WebRtcDebug {
+  pcCreated: boolean;
+  localDescriptionSet: boolean;
+  remoteDescriptionSet: boolean;
+  iceGatheringState: string;
+  iceConnectionState: string;
+  signalingState: string;
+  hasRemoteTrack: boolean;
+  connectionState: string;
+}
+
 const VideoCallPage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
@@ -51,47 +62,79 @@ const VideoCallPage: React.FC = () => {
   });
   const [connectionQuality, setConnectionQuality] = useState<string>("unknown");
   const [isMonitoring, setIsMonitoring] = useState(false);
+  const [webrtcDebug, setWebrtcDebug] = useState<WebRtcDebug>({
+    pcCreated: false,
+    localDescriptionSet: false,
+    remoteDescriptionSet: false,
+    iceGatheringState: 'new',
+    iceConnectionState: 'new',
+    signalingState: 'stable',
+    hasRemoteTrack: false,
+    connectionState: 'new'
+  });
 
-const rtcConfig = {
-  iceServers: [
-    // STUN servers
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' },
-    { urls: 'stun:stun.voipgate.com:3478' },
-    
-    // Critical: More reliable TURN servers
+  // Enhanced WebRTC Configuration
+  const rtcConfig = {
+    iceServers: [
+      // Primary STUN servers
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' },
+      
+      // Your Metered.ca TURN servers
+      {
+        urls: "turn:in.relay.metered.ca:80",
+        username: "b42da29201cf149bcd63bb44",
+        credential: "ATmIroK5eNTrT6Ae",
+      },
+      {
+        urls: "turn:in.relay.metered.ca:443",
+        username: "b42da29201cf149bcd63bb44",
+        credential: "ATmIroK5eNTrT6Ae",
+      },
+      {
+        urls: "turns:in.relay.metered.ca:443?transport=tcp",
+        username: "b42da29201cf149bcd63bb44",
+        credential: "ATmIroK5eNTrT6Ae",
+      },
+      
+      // Fallback TURN servers
+      {
+        urls: [
+          'turn:openrelay.metered.ca:80',
+          'turn:openrelay.metered.ca:443'
+        ],
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      },
+      {
+      urls: [
+        'turn:openrelay.metered.ca:80',
+        'turn:openrelay.metered.ca:443',
+        'turn:openrelay.metered.ca:443?transport=tcp'
+      ],
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    },
+    {
+      urls: [
+        'turn:numb.viagenie.ca:3478',
+        'turn:numb.viagenie.ca:3478?transport=tcp'
+      ],
+      credential: 'muazkh',
+      username: 'webrtc@live.com'
+    },
     {
       urls: 'turn:relay1.expressturn.com:3478',
       username: 'efSNdhS61TZR72ZR6h',
       credential: 'D5DZj4qEeJ4Z6BZz'
-    },
-    {
-      urls: 'turn:relay2.expressturn.com:3478',
-      username: 'efSNdhS61TZR72ZR6h',
-      credential: 'D5DZj4qEeJ4Z6BZz'
-    },
-    {
-      urls: 'turn:openrelay.metered.ca:80',
-      username: 'openrelayproject',
-      credential: 'openrelayproject'
-    },
-    {
-      urls: 'turn:openrelay.metered.ca:443',
-      username: 'openrelayproject',
-      credential: 'openrelayproject'
-    },
-    {
-      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-      username: 'openrelayproject',
-      credential: 'openrelayproject'
     }
-  ],
-  iceCandidatePoolSize: 10,
-  iceTransportPolicy: 'all',
-  bundlePolicy: 'max-bundle',
-  rtcpMuxPolicy: 'require'
-};
+    ],
+    iceCandidatePoolSize: 10,
+    iceTransportPolicy: 'all',
+    bundlePolicy: 'max-bundle',
+    rtcpMuxPolicy: 'require'
+  };
 
   // Connection monitoring refs
   const statsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -100,14 +143,58 @@ const rtcConfig = {
   const lastAudioBytesReceivedRef = useRef<number>(0);
   const lastPacketReceivedRef = useRef<number>(Date.now());
 
+  // Debug logging function
+  const addDebugLog = (message: string) => {
+    console.log(`🔍 ${new Date().toLocaleTimeString()}: ${message}`);
+  };
+
+  // Enhanced TURN usage checking
+  const checkTurnUsage = async () => {
+    if (!peerConnectionRef.current) return;
+    
+    try {
+      const stats = await peerConnectionRef.current.getStats();
+      let turnUsed = false;
+      let localCandidateType = '';
+      let remoteCandidateType = '';
+      
+      stats.forEach(report => {
+        if (report.type === 'candidate-pair' && report.selected) {
+          // Get local candidate details
+          const localCandidate = stats.get(report.localCandidateId);
+          if (localCandidate) {
+            localCandidateType = localCandidate.candidateType;
+            addDebugLog(`📍 Local candidate type: ${localCandidateType}`);
+            if (localCandidateType === 'relay') {
+              turnUsed = true;
+            }
+          }
+          
+          // Get remote candidate details
+          const remoteCandidate = stats.get(report.remoteCandidateId);
+          if (remoteCandidate) {
+            remoteCandidateType = remoteCandidate.candidateType;
+            addDebugLog(`📍 Remote candidate type: ${remoteCandidateType}`);
+          }
+        }
+      });
+      
+      addDebugLog(`🔄 TURN Server Usage: ${turnUsed ? '✅ USING TURN' : '❌ NOT using TURN'}`);
+      addDebugLog(`📍 Connection type: ${localCandidateType} -> ${remoteCandidateType}`);
+      
+    } catch (error) {
+      console.error('Error checking TURN usage:', error);
+    }
+  };
+
   // Initialize Connection Monitoring
   const startConnectionMonitoring = () => {
     if (!peerConnectionRef.current || isMonitoring) return;
 
-    console.log("Starting connection monitoring...");
+    addDebugLog("Starting connection monitoring...");
     setIsMonitoring(true);
 
-    // Monitor stats every 2 seconds
+    // Monitor stats every 3 seconds
     statsIntervalRef.current = setInterval(() => {
       checkConnectionHealth();
     }, 3000);
@@ -141,7 +228,6 @@ const rtcConfig = {
       let audioBytesReceived = 0;
       let audioBytesSent = 0;
       let packetsLost = 0;
-      let currentTimestamp = 0;
 
       stats.forEach((report) => {
         if (report.type === "inbound-rtp" && !report.isRemote) {
@@ -152,7 +238,6 @@ const rtcConfig = {
             audioBytesReceived = report.bytesReceived || 0;
             packetsLost += report.packetsLost || 0;
           }
-          currentTimestamp = report.timestamp;
         }
 
         if (report.type === "outbound-rtp" && !report.isRemote) {
@@ -201,7 +286,7 @@ const rtcConfig = {
 
       // Check for prolonged silence
       if (timeSinceLastPacket > 10000 && hasRemoteUser) {
-        console.log("❌ No media received for 10+ seconds - Connection may be dead");
+        addDebugLog("❌ No media received for 10+ seconds - Connection may be dead");
         setConnectionQuality("disconnected");
       }
     } catch (error) {
@@ -218,7 +303,7 @@ const rtcConfig = {
 
     // Check if we need to reconnect
     if (connectionState === "failed" || iceState === "failed") {
-      console.log("🔄 Connection failed, attempting to restart...");
+      addDebugLog("🔄 Connection failed, attempting to restart...");
       handleConnectionFailure();
     }
   };
@@ -233,30 +318,33 @@ const rtcConfig = {
     if (!peerConnectionRef.current) return;
 
     const state = peerConnectionRef.current.connectionState;
+    addDebugLog(`🔗 Connection state changed: ${state}`);
     setConnectionStatus(state);
+    setWebrtcDebug(prev => ({ ...prev, connectionState: state }));
 
     switch (state) {
       case "connected":
-        console.log("✅ Peer connection established!");
+        addDebugLog("✅ Peer connection established!");
         setConnectionQuality("excellent");
         startConnectionMonitoring();
+        checkTurnUsage();
         break;
       case "disconnected":
-        console.log("🟡 Peer connection disconnected");
+        addDebugLog("🟡 Peer connection disconnected");
         setConnectionQuality("poor");
         break;
       case "failed":
-        console.log("❌ Peer connection failed");
+        addDebugLog("❌ Peer connection failed");
         setConnectionQuality("disconnected");
         stopConnectionMonitoring();
         break;
       case "closed":
-        console.log("🔴 Peer connection closed");
+        addDebugLog("🔴 Peer connection closed");
         setConnectionQuality("disconnected");
         stopConnectionMonitoring();
         break;
       case "connecting":
-        console.log("🔄 Peer connection connecting...");
+        addDebugLog("🔄 Peer connection connecting...");
         setConnectionQuality("unknown");
         break;
     }
@@ -266,14 +354,30 @@ const rtcConfig = {
     if (!peerConnectionRef.current) return;
 
     const state = peerConnectionRef.current.iceConnectionState;
+    addDebugLog(`❄️ ICE connection state: ${state}`);
     setIceConnectionStatus(state);
+    setWebrtcDebug(prev => ({ ...prev, iceConnectionState: state }));
+
+    if (state === 'connected') {
+      addDebugLog("🎉 ICE connected successfully!");
+    } else if (state === 'failed') {
+      addDebugLog("❌ ICE connection failed");
+      setTimeout(() => {
+        if (peerConnectionRef.current?.iceConnectionState === 'failed') {
+          addDebugLog("🔄 Attempting to restart ICE...");
+          createOffer();
+        }
+      }, 2000);
+    }
   };
 
   const handleSignalingStateChange = () => {
     if (!peerConnectionRef.current) return;
 
     const state = peerConnectionRef.current.signalingState;
+    addDebugLog(`📶 Signaling state: ${state}`);
     setSignalingStatus(state);
+    setWebrtcDebug(prev => ({ ...prev, signalingState: state }));
   };
 
   // Check if video call is actively transmitting media
@@ -288,9 +392,9 @@ const rtcConfig = {
   // Initialize Media Stream - AUTO START
   const initializeMedia = async () => {
     try {
-      console.log("🔄 Auto-starting media stream...");
+      addDebugLog("🔄 Auto-starting media stream...");
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
+        video: { width: 1280, height: 720 },
         audio: true,
       });
 
@@ -301,7 +405,7 @@ const rtcConfig = {
       }
 
       setIsCallActive(true);
-      console.log("✅ Media stream initialized successfully");
+      addDebugLog("✅ Media stream initialized successfully");
 
       // Create peer connection immediately after getting media
       createPeerConnection();
@@ -322,36 +426,64 @@ const rtcConfig = {
       peerConnectionRef.current.close();
     }
 
+    addDebugLog("🔄 Creating peer connection with enhanced logging");
     const peerConnection = new RTCPeerConnection(rtcConfig);
-    console.log("✅ Created new peer connection");
 
     // Add local stream tracks if available
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach((track) => {
-        console.log("➕ Adding track:", track.kind, track.id);
         peerConnection.addTrack(track, localStreamRef.current!);
+        addDebugLog(`➕ Added local ${track.kind} track: ${track.id}`);
       });
     }
 
-    // Handle remote stream
+    // Enhanced remote track handling
     peerConnection.ontrack = (event) => {
-      console.log("📹 Received remote stream tracks:", event.streams.length);
-      if (event.streams && event.streams[0] && remoteVideoRef.current) {
+      addDebugLog(`📹 Received remote track: ${event.track.kind} (${event.streams.length} streams)`);
+      
+      if (event.streams[0] && remoteVideoRef.current) {
         remoteVideoRef.current.srcObject = event.streams[0];
-        console.log("✅ Remote video stream set successfully");
+        setWebrtcDebug(prev => ({ ...prev, hasRemoteTrack: true }));
+        addDebugLog("✅ Remote video stream set successfully");
         lastPacketReceivedRef.current = Date.now();
+        
+        // Enhanced video event listeners
+        remoteVideoRef.current.onloadedmetadata = () => {
+          addDebugLog("🎥 Remote video metadata loaded");
+        };
+        
+        remoteVideoRef.current.onplay = () => {
+          addDebugLog("▶️ Remote video started playing");
+        };
       }
     };
 
-    // ICE candidate handling
+    // Enhanced ICE candidate handling
     peerConnection.onicecandidate = (event) => {
-      if (event.candidate && socketRef.current) {
-        console.log("🧊 Sending ICE candidate");
-        socketRef.current.emit("ice-candidate", {
-          roomId,
-          candidate: event.candidate,
-        });
+      if (event.candidate) {
+        addDebugLog(`🧊 ICE candidate: ${event.candidate.type} - ${event.candidate.protocol}`);
+        
+        // Check for relay candidates (TURN)
+        if (event.candidate.type === 'relay') {
+          addDebugLog("✅ TURN server is being used!");
+        }
+        
+        if (socketRef.current) {
+          socketRef.current.emit("ice-candidate", {
+            roomId,
+            candidate: event.candidate,
+          });
+        }
+      } else {
+        addDebugLog("✅ All ICE candidates gathered");
       }
+    };
+
+    // ICE gathering state
+    peerConnection.onicegatheringstatechange = () => {
+      const state = peerConnection.iceGatheringState;
+      setWebrtcDebug(prev => ({ ...prev, iceGatheringState: state }));
+      addDebugLog(`🧊 ICE gathering state: ${state}`);
     };
 
     // Enhanced monitoring event listeners
@@ -361,46 +493,62 @@ const rtcConfig = {
 
     // Handle negotiation needed - AUTO CREATE OFFER
     peerConnection.onnegotiationneeded = async () => {
-      console.log("🤝 Negotiation needed, creating offer...");
+      addDebugLog("🤝 Negotiation needed, creating offer...");
       await createOffer();
     };
 
+    setWebrtcDebug(prev => ({ ...prev, pcCreated: true }));
     peerConnectionRef.current = peerConnection;
+    addDebugLog("✅ Peer connection created successfully");
     return peerConnection;
   };
 
   // Create Offer
   const createOffer = async () => {
     if (!peerConnectionRef.current) {
-      console.error("❌ No peer connection when trying to create offer");
+      addDebugLog("❌ No peer connection when trying to create offer");
       return;
     }
 
     // Prevent multiple simultaneous offers
     if (isMakingOffer) {
-      console.log("⏳ Already making an offer, skipping...");
+      addDebugLog("⏳ Already making an offer, skipping...");
       return;
     }
 
     try {
       setIsMakingOffer(true);
-      console.log("📤 Creating offer...");
+      addDebugLog("📤 Creating offer...");
 
-      const offer = await peerConnectionRef.current.createOffer();
-      console.log("✅ Offer created, setting local description...");
+      const offer = await peerConnectionRef.current.createOffer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: true
+      });
+      addDebugLog(`✅ Offer created: ${offer.type}`);
 
       await peerConnectionRef.current.setLocalDescription(offer);
-      console.log("✅ Local description set, sending offer...");
+      setWebrtcDebug(prev => ({ ...prev, localDescriptionSet: true }));
+      addDebugLog("✅ Local description set");
 
       if (socketRef.current) {
         socketRef.current.emit("offer", {
           roomId,
           offer: offer,
         });
-        console.log("✅ Offer sent successfully");
+        addDebugLog("✅ Offer sent via socket");
       }
+
+      // Set timeout to check connection
+      setTimeout(() => {
+        if (peerConnectionRef.current?.iceConnectionState !== 'connected') {
+          addDebugLog("⏰ Offer timeout - checking connection status");
+          checkTurnUsage();
+        }
+      }, 10000);
+
     } catch (error) {
-      console.error("❌ Error creating offer:", error);
+      addDebugLog(`❌ Error creating offer: ${error}`);
+      console.error("Error creating offer:", error);
     } finally {
       setIsMakingOffer(false);
     }
@@ -408,11 +556,11 @@ const rtcConfig = {
 
   // Handle Offer
   const handleOffer = async (offer: RTCSessionDescriptionInit) => {
-    console.log("📥 Handling offer from remote user");
+    addDebugLog("📥 Handling offer from remote user");
 
     if (!peerConnectionRef.current) {
-      console.log("🔄 Creating new peer connection for incoming offer");
-      await initializeMedia(); // Ensure we have media before handling offer
+      addDebugLog("🔄 Creating new peer connection for incoming offer");
+      await initializeMedia();
     }
 
     const peerConnection = peerConnectionRef.current!;
@@ -420,60 +568,65 @@ const rtcConfig = {
     try {
       // Check if we should ignore this offer (race condition prevention)
       if (isMakingOffer || peerConnection.signalingState !== "stable") {
-        console.log("🚫 Ignoring offer - already making offer or not stable");
+        addDebugLog("🚫 Ignoring offer - already making offer or not stable");
         setIsIgnoringOffer(true);
         return;
       }
 
       setIsIgnoringOffer(false);
+      addDebugLog("🔧 Setting remote description (offer)...");
 
-      console.log("🔧 Setting remote description (offer)...");
       await peerConnection.setRemoteDescription(offer);
-      console.log("✅ Remote description set, creating answer...");
+      setWebrtcDebug(prev => ({ ...prev, remoteDescriptionSet: true }));
+      addDebugLog("✅ Remote description set");
 
       // Process queued ICE candidates after remote description is set
       processQueuedICECandidates();
 
+      addDebugLog("📤 Creating answer...");
       const answer = await peerConnection.createAnswer();
-      console.log("✅ Answer created, setting local description...");
+      addDebugLog("✅ Answer created");
 
       await peerConnection.setLocalDescription(answer);
-      console.log("✅ Local description set, sending answer...");
+      addDebugLog("✅ Local description set for answer");
 
       if (socketRef.current) {
         socketRef.current.emit("answer", {
           roomId,
           answer: answer,
         });
-        console.log("✅ Answer sent successfully");
+        addDebugLog("✅ Answer sent via socket");
       }
     } catch (error) {
-      console.error("❌ Error handling offer:", error);
+      addDebugLog(`❌ Error handling offer: ${error}`);
+      console.error("Error handling offer:", error);
     }
   };
 
   // Handle Answer
   const handleAnswer = async (answer: RTCSessionDescriptionInit) => {
     if (!peerConnectionRef.current) {
-      console.error("❌ No peer connection when handling answer");
+      addDebugLog("❌ No peer connection when handling answer");
       return;
     }
 
     const peerConnection = peerConnectionRef.current;
-    console.log("📥 Handling answer");
+    addDebugLog("📥 Handling answer");
 
     try {
       if (peerConnection.signalingState === "have-local-offer") {
-        console.log("🔧 Setting remote description (answer)...");
+        addDebugLog("🔧 Setting remote description (answer)...");
         await peerConnection.setRemoteDescription(answer);
-        console.log("✅ Remote description set successfully");
+        setWebrtcDebug(prev => ({ ...prev, remoteDescriptionSet: true }));
+        addDebugLog("✅ Remote description set successfully");
 
         processQueuedICECandidates();
       } else {
-        console.warn("⚠️ Cannot set remote answer in current state:", peerConnection.signalingState);
+        addDebugLog(`⚠️ Cannot set remote answer in current state: ${peerConnection.signalingState}`);
       }
     } catch (error) {
-      console.error("❌ Error handling answer:", error);
+      addDebugLog(`❌ Error handling answer: ${error}`);
+      console.error("Error handling answer:", error);
     }
   };
 
@@ -481,16 +634,16 @@ const rtcConfig = {
   const processQueuedICECandidates = async () => {
     if (!peerConnectionRef.current || iceCandidateQueueRef.current.length === 0) return;
 
-    console.log("🔧 Processing queued ICE candidates...");
+    addDebugLog(`🔧 Processing ${iceCandidateQueueRef.current.length} queued ICE candidates...`);
     const queue = [...iceCandidateQueueRef.current];
     iceCandidateQueueRef.current = [];
 
     for (const candidate of queue) {
       try {
         await peerConnectionRef.current.addIceCandidate(candidate);
-        console.log("✅ Queued ICE candidate added successfully");
+        addDebugLog("✅ Queued ICE candidate added successfully");
       } catch (error) {
-        console.error("❌ Error adding queued ICE candidate:", error);
+        addDebugLog(`❌ Error adding queued ICE candidate: ${error}`);
       }
     }
   };
@@ -499,23 +652,24 @@ const rtcConfig = {
   const handleIceCandidate = async (candidate: RTCIceCandidateInit) => {
     const peerConnection = peerConnectionRef.current;
     if (!peerConnection) {
-      console.error("❌ No peer connection when handling ICE candidate");
+      addDebugLog("❌ No peer connection when handling ICE candidate");
+      iceCandidateQueueRef.current.push(candidate);
       return;
     }
 
     // If remote description is not set, queue the candidate
     if (!peerConnection.remoteDescription) {
-      console.log("⏳ Remote description not set, queueing candidate");
+      addDebugLog("⏳ Queuing ICE candidate - no remote description");
       iceCandidateQueueRef.current.push(candidate);
       return;
     }
 
     try {
-      console.log("🧊 Adding ICE candidate...");
+      addDebugLog("🧊 Adding ICE candidate...");
       await peerConnection.addIceCandidate(candidate);
-      console.log("✅ ICE candidate added successfully");
+      addDebugLog("✅ ICE candidate added successfully");
     } catch (error) {
-      console.error("❌ Error adding ICE candidate:", error);
+      addDebugLog(`❌ Error adding ICE candidate: ${error}`);
     }
   };
 
@@ -523,60 +677,68 @@ const rtcConfig = {
   useEffect(() => {
     const socket = io("https://webrtc-video-call-kfpm.onrender.com", {
       transports: ["websocket", "polling"],
+      timeout: 10000,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000
     });
 
     socketRef.current = socket;
 
     socket.on("connect", () => {
-      console.log("✅ Connected to signaling server");
+      addDebugLog("✅ Connected to signaling server");
       setIsConnected(true);
 
       if (roomId) {
-        console.log("🚪 Joining room:", roomId);
+        addDebugLog(`🚪 Joining room: ${roomId}`);
         socket.emit("join-room", roomId, userId);
         
         // AUTO START MEDIA WHEN JOINING ROOM
-        console.log("🎬 Auto-initializing media...");
+        addDebugLog("🎬 Auto-initializing media...");
         initializeMedia();
       }
     });
 
-    socket.on("disconnect", () => {
-      console.log("🔴 Disconnected from signaling server");
+    socket.on("connect_error", (error) => {
+      addDebugLog(`❌ Socket connection error: ${error.message}`);
+      setIsConnected(false);
+    });
+
+    socket.on("disconnect", (reason) => {
+      addDebugLog(`🔴 Disconnected from signaling server: ${reason}`);
       setIsConnected(false);
     });
 
     // WebRTC Signaling Events
     socket.on("user-connected", (remoteUserId: string) => {
-      console.log("👤 Remote user connected:", remoteUserId);
+      addDebugLog(`👤 Remote user connected: ${remoteUserId}`);
       setHasRemoteUser(true);
       
       // If we already have media and peer connection, create offer
       if (localStreamRef.current && peerConnectionRef.current) {
-        console.log("🤝 Creating offer for new user");
+        addDebugLog("🤝 Creating offer for new user");
         createOffer();
       }
     });
 
     socket.on("user-disconnected", () => {
-      console.log("👤 Remote user disconnected");
+      addDebugLog("👤 Remote user disconnected");
       setHasRemoteUser(false);
-      // Don't close peer connection completely, just update UI
     });
 
     socket.on("offer", async (data: { offer: RTCSessionDescriptionInit; from: string }) => {
-      console.log("📥 Received offer from:", data.from);
+      addDebugLog(`📥 Received offer from: ${data.from}`);
       setHasRemoteUser(true);
       await handleOffer(data.offer);
     });
 
     socket.on("answer", async (data: { answer: RTCSessionDescriptionInit; from: string }) => {
-      console.log("📥 Received answer from:", data.from);
+      addDebugLog(`📥 Received answer from: ${data.from}`);
       await handleAnswer(data.answer);
     });
 
     socket.on("ice-candidate", async (data: { candidate: RTCIceCandidateInit; from: string }) => {
-      console.log("🧊 Received ICE candidate from:", data.from);
+      addDebugLog(`🧊 Received ICE candidate from: ${data.from}`);
       await handleIceCandidate(data.candidate);
     });
 
@@ -586,6 +748,7 @@ const rtcConfig = {
     });
 
     return () => {
+      addDebugLog("🧹 Cleaning up connections...");
       socket.disconnect();
       closePeerConnection();
       stopConnectionMonitoring();
@@ -597,7 +760,7 @@ const rtcConfig = {
     stopConnectionMonitoring();
 
     if (peerConnectionRef.current) {
-      console.log("🔴 Closing peer connection");
+      addDebugLog("🔴 Closing peer connection");
       peerConnectionRef.current.close();
       peerConnectionRef.current = null;
     }
@@ -613,6 +776,16 @@ const rtcConfig = {
     setConnectionStatus("closed");
     setIceConnectionStatus("closed");
     setConnectionQuality("disconnected");
+    setWebrtcDebug({
+      pcCreated: false,
+      localDescriptionSet: false,
+      remoteDescriptionSet: false,
+      iceGatheringState: 'new',
+      iceConnectionState: 'new',
+      signalingState: 'stable',
+      hasRemoteTrack: false,
+      connectionState: 'new'
+    });
     iceCandidateQueueRef.current = [];
   };
 
@@ -657,6 +830,15 @@ const rtcConfig = {
   const handleCopyRoomId = () => {
     navigator.clipboard.writeText(roomId || "");
     alert("Room ID copied to clipboard!");
+  };
+
+  // Manual reconnection for debugging
+  const handleForceReconnect = () => {
+    addDebugLog("🔄 Manual reconnection triggered");
+    closePeerConnection();
+    setTimeout(() => {
+      initializeMedia();
+    }, 1000);
   };
 
   // Get connection quality color
@@ -731,6 +913,54 @@ const rtcConfig = {
           </div>
         )}
 
+        {/* Enhanced Debug Panel */}
+        <div className="bg-gray-800 rounded-lg p-4 mb-4">
+          <h3 className="text-white text-lg font-semibold mb-3">WebRTC Debug Panel</h3>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-white text-xs">
+            <div className={`p-2 rounded ${webrtcDebug.pcCreated ? 'bg-green-500' : 'bg-red-500'}`}>
+              PC Created: {webrtcDebug.pcCreated ? '✅' : '❌'}
+            </div>
+            <div className={`p-2 rounded ${webrtcDebug.localDescriptionSet ? 'bg-green-500' : 'bg-red-500'}`}>
+              Local Desc: {webrtcDebug.localDescriptionSet ? '✅' : '❌'}
+            </div>
+            <div className={`p-2 rounded ${webrtcDebug.remoteDescriptionSet ? 'bg-green-500' : 'bg-red-500'}`}>
+              Remote Desc: {webrtcDebug.remoteDescriptionSet ? '✅' : '❌'}
+            </div>
+            <div className={`p-2 rounded ${webrtcDebug.hasRemoteTrack ? 'bg-green-500' : 'bg-red-500'}`}>
+              Remote Track: {webrtcDebug.hasRemoteTrack ? '✅' : '❌'}
+            </div>
+          </div>
+
+          <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2 text-white text-xs">
+            <div>ICE State: <span className="font-mono">{webrtcDebug.iceConnectionState}</span></div>
+            <div>Signaling: <span className="font-mono">{webrtcDebug.signalingState}</span></div>
+            <div>Gathering: <span className="font-mono">{webrtcDebug.iceGatheringState}</span></div>
+            <div>Connection: <span className="font-mono">{webrtcDebug.connectionState}</span></div>
+          </div>
+
+          <div className="mt-3 flex gap-2">
+            <button
+              onClick={checkTurnUsage}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm"
+            >
+              Check TURN Usage
+            </button>
+            <button
+              onClick={handleForceReconnect}
+              className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm"
+            >
+              Force Reconnect
+            </button>
+            <button
+              onClick={createOffer}
+              className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm"
+            >
+              Create Offer
+            </button>
+          </div>
+        </div>
+
         {/* Video Grid */}
         <div className="bg-black rounded-lg p-4 max-w-6xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -793,6 +1023,13 @@ const rtcConfig = {
                   {hasRemoteUser ? "Remote User" : "Waiting..."}
                 </span>
               </div>
+
+              {/* Remote connection status */}
+              {hasRemoteUser && !webrtcDebug.hasRemoteTrack && (
+                <div className="absolute top-4 right-4 bg-yellow-500 text-white px-2 py-1 rounded text-xs">
+                  Connecting...
+                </div>
+              )}
             </div>
           </div>
 
