@@ -82,21 +82,44 @@ const VideoCallPage: React.FC = () => {
       { urls: 'stun:stun2.l.google.com:19302' },
       
       // Your Metered.ca TURN servers
-      {
-        urls: "turn:in.relay.metered.ca:80",
-        username: "b42da29201cf149bcd63bb44",
-        credential: "ATmIroK5eNTrT6Ae",
-      },
-      {
-        urls: "turn:in.relay.metered.ca:443",
-        username: "b42da29201cf149bcd63bb44",
-        credential: "ATmIroK5eNTrT6Ae",
-      },
-      {
-        urls: "turns:in.relay.metered.ca:443?transport=tcp",
-        username: "b42da29201cf149bcd63bb44",
-        credential: "ATmIroK5eNTrT6Ae",
-      },
+      // {
+      //   urls: "turn:in.relay.metered.ca:80",
+      //   username: "b42da29201cf149bcd63bb44",
+      //   credential: "ATmIroK5eNTrT6Ae",
+      // },
+      // {
+      //   urls: "turn:in.relay.metered.ca:443",
+      //   username: "b42da29201cf149bcd63bb44",
+      //   credential: "ATmIroK5eNTrT6Ae",
+      // },
+      // {
+      //   urls: "turns:in.relay.metered.ca:443?transport=tcp",
+      //   username: "b42da29201cf149bcd63bb44",
+      //   credential: "ATmIroK5eNTrT6Ae",
+      // },
+      // {
+      //   urls: "stun:stun.relay.metered.ca:80",
+      // },
+      // {
+      //   urls: "turn:in.relay.metered.ca:80",
+      //   username: "b42da29201cf149bcd63bb44",
+      //   credential: "ATmIroK5eNTrT6Ae",
+      // },
+      // {
+      //   urls: "turn:in.relay.metered.ca:80?transport=tcp",
+      //   username: "b42da29201cf149bcd63bb44",
+      //   credential: "ATmIroK5eNTrT6Ae",
+      // },
+      // {
+      //   urls: "turn:in.relay.metered.ca:443",
+      //   username: "b42da29201cf149bcd63bb44",
+      //   credential: "ATmIroK5eNTrT6Ae",
+      // },
+      // {
+      //   urls: "turns:in.relay.metered.ca:443?transport=tcp",
+      //   username: "b42da29201cf149bcd63bb44",
+      //   credential: "ATmIroK5eNTrT6Ae",
+      // },
       
       // Fallback TURN servers
       {
@@ -675,7 +698,9 @@ const VideoCallPage: React.FC = () => {
 
   // Initialize Socket Connection - AUTO START MEDIA
   useEffect(() => {
-    const socket = io("https://webrtc-video-call-kfpm.onrender.com", {
+    const socketUrl = import.meta.env.VITE_SIGNALING_SERVER_URL;
+    console.log("Socket url is ***************8888",socketUrl);
+    const socket = io(socketUrl, {
       transports: ["websocket", "polling"],
       timeout: 10000,
       reconnection: true,
