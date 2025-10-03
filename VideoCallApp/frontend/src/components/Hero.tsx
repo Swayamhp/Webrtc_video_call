@@ -3,10 +3,14 @@ import React, { useEffect, useState } from "react";
 import videoCallImage1 from "../assets/edited_firstImage.png";
 import videoCallImage2 from "../assets/edited_secondImage.png";
 import videoCallImage3 from "../assets/edited_thirdImage.png";
+import GenerateIdModal from "./GenerateIdModal";
 
 const Hero: React.FC = () => {
   const images = ['',videoCallImage1,videoCallImage2,videoCallImage3];
   const [imageIndex,setImageIndex] = useState(0);
+  const [videoModal, setVideoModal] = useState(false);
+  const [currentRoomId, setCurrentRoomId] = useState('');
+
   useEffect( ()=>{
     const timeInterval = setInterval(()=>{
       console.log(imageIndex);
@@ -14,6 +18,20 @@ const Hero: React.FC = () => {
     },3000)
         return () => clearInterval(timeInterval);
   },[])
+
+  const handleJoinRoom = (roomId: string) => {
+    setCurrentRoomId(roomId);
+    setVideoModal(false);
+    // Here you can add navigation logic to the video call room
+    console.log(`Joining room: ${roomId}`);
+    // Example: navigate to video call page with room ID
+    window.location.href = `/video-call/${roomId}`;
+  };
+
+  const handleStartCall = () => {
+    setVideoModal(true);
+  };
+
   return (
     <section className="py-12 px-4">
       <div className="container mx-auto max-w-6xl">
@@ -31,13 +49,35 @@ const Hero: React.FC = () => {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4">
-              <button className="px-8 py-4 bg-blue-600 text-white text-lg font-semibold rounded-xl hover:bg-blue-700 transition-all transform hover:scale-105 shadow-xl">
+              <button 
+                className="px-8 py-4 bg-blue-600 text-white text-lg font-semibold rounded-xl hover:bg-blue-700 transition-all transform hover:scale-105 shadow-xl"
+                onClick={handleStartCall}
+              >
                 Start Free Call
               </button>
               <button className="px-8 py-4 border-2 border-gray-300 text-gray-700 text-lg font-semibold rounded-xl hover:border-blue-400 hover:text-blue-600 transition-all">
                 Download App
               </button>
             </div>
+
+            {/* Display current room info if available */}
+            {currentRoomId && (
+              <div className="mt-4 p-3 bg-green-100 border border-green-400 rounded-lg">
+                <p className="text-green-800 text-sm">
+                  Ready to join room: <strong>{currentRoomId}</strong>
+                </p>
+                <button 
+                  onClick={() => {
+                    // Navigate to video call page
+                    console.log(`Navigating to room: ${currentRoomId}`);
+                    // Add your navigation logic here
+                  }}
+                  className="mt-2 px-4 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700"
+                >
+                  Join Room Now
+                </button>
+              </div>
+            )}
 
             <div className="mt-8 flex items-center space-x-6 text-sm text-gray-500">
               <div className="flex items-center space-x-2">
@@ -82,6 +122,13 @@ const Hero: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      {/* GenerateIdModal */}
+      <GenerateIdModal 
+        isOpen={videoModal} 
+        onClose={() => setVideoModal(false)}
+        onJoinRoom={handleJoinRoom}
+      />
     </section>
   );
 };

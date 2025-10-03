@@ -990,13 +990,13 @@ const VideoCallPage: React.FC = () => {
         <div className="bg-black rounded-lg p-4 max-w-6xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             {/* Local Video */}
-            <div className="relative bg-gray-800 rounded-lg aspect-video flex items-center justify-center">
+            <div className="relative bg-gray-800 rounded-lg  flex items-center justify-center">
               <video
                 ref={localVideoRef}
                 autoPlay
                 playsInline
                 muted
-                className="w-full h-full object-cover rounded-lg"
+                className="w-full h-full rounded-lg"
               ></video>
 
               {isVideoOff && (
