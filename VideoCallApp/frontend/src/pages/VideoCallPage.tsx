@@ -2,6 +2,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import io, { Socket } from "socket.io-client";
+import { FiSettings } from "react-icons/fi";
+import VideoConnectLogo from "../components/VideoConnectLogo";
+import toast from "react-hot-toast";
 
 // Connection monitoring interface
 // interface ConnectionStats {
@@ -44,43 +47,32 @@ const VideoCallPage: React.FC = () => {
   const [isCallActive, setIsCallActive] = useState(false);
   const [isMakingOffer, setIsMakingOffer] = useState(false);
   // const [isIgnoringOffer, setIsIgnoringOffer] = useState(false);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [userId] = useState(
     () => `user-${Math.random().toString(36).substr(2, 9)}`
   );
 
-  // // Enhanced connection monitoring state
-  // const [connectionStatus, setConnectionStatus] = useState<string>("disconnected");
-  // const [iceConnectionStatus, setIceConnectionStatus] = useState<string>("new");
-  // const [signalingStatus, setSignalingStatus] = useState<string>("stable");
-  // const [connectionStats, setConnectionStats] = useState<ConnectionStats>({
-  //   videoBytesReceived: 0,
-  //   videoBytesSent: 0,
-  //   audioBytesReceived: 0,
-  //   audioBytesSent: 0,
-  //   packetsLost: 0,
-  //   lastPacketReceived: Date.now(),
-  // });
   const [connectionQuality, setConnectionQuality] = useState<string>("unknown");
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [webrtcDebug, setWebrtcDebug] = useState<WebRtcDebug>({
     pcCreated: false,
     localDescriptionSet: false,
     remoteDescriptionSet: false,
-    iceGatheringState: 'new',
-    iceConnectionState: 'new',
-    signalingState: 'stable',
+    iceGatheringState: "new",
+    iceConnectionState: "new",
+    signalingState: "stable",
     hasRemoteTrack: false,
-    connectionState: 'new'
+    connectionState: "new",
   });
 
   // Enhanced WebRTC Configuration
-  const rtcConfig :RTCConfiguration= {
+  const rtcConfig: RTCConfiguration = {
     iceServers: [
       // Primary STUN servers
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' },
-      { urls: 'stun:stun2.l.google.com:19302' },
-      
+      { urls: "stun:stun.l.google.com:19302" },
+      { urls: "stun:stun1.l.google.com:19302" },
+      { urls: "stun:stun2.l.google.com:19302" },
+
       // Your Metered.ca TURN servers
       // {
       //   urls: "turn:in.relay.metered.ca:80",
@@ -120,48 +112,47 @@ const VideoCallPage: React.FC = () => {
       //   username: "b42da29201cf149bcd63bb44",
       //   credential: "ATmIroK5eNTrT6Ae",
       // },
-      
+
       // Fallback TURN servers
       {
-        urls: [
-          'turn:openrelay.metered.ca:80',
-          'turn:openrelay.metered.ca:443'
-        ],
-        username: 'openrelayproject',
-        credential: 'openrelayproject'
+        urls: ["turn:openrelay.metered.ca:80", "turn:openrelay.metered.ca:443"],
+        username: "openrelayproject",
+        credential: "openrelayproject",
       },
       {
-      urls: [
-        'turn:openrelay.metered.ca:80',
-        'turn:openrelay.metered.ca:443',
-        'turn:openrelay.metered.ca:443?transport=tcp'
-      ],
-      username: 'openrelayproject',
-      credential: 'openrelayproject'
-    },
-    {
-      urls: [
-        'turn:numb.viagenie.ca:3478',
-        'turn:numb.viagenie.ca:3478?transport=tcp'
-      ],
-      credential: 'muazkh',
-      username: 'webrtc@live.com'
-    },
-    {
-      urls: 'turn:relay1.expressturn.com:3478',
-      username: 'efSNdhS61TZR72ZR6h',
-      credential: 'D5DZj4qEeJ4Z6BZz'
-    }
+        urls: [
+          "turn:openrelay.metered.ca:80",
+          "turn:openrelay.metered.ca:443",
+          "turn:openrelay.metered.ca:443?transport=tcp",
+        ],
+        username: "openrelayproject",
+        credential: "openrelayproject",
+      },
+      {
+        urls: [
+          "turn:numb.viagenie.ca:3478",
+          "turn:numb.viagenie.ca:3478?transport=tcp",
+        ],
+        credential: "muazkh",
+        username: "webrtc@live.com",
+      },
+      {
+        urls: "turn:relay1.expressturn.com:3478",
+        username: "efSNdhS61TZR72ZR6h",
+        credential: "D5DZj4qEeJ4Z6BZz",
+      },
     ],
     iceCandidatePoolSize: 10,
-    iceTransportPolicy: 'all',
-    bundlePolicy: 'max-bundle',
-    rtcpMuxPolicy: 'require'
+    iceTransportPolicy: "all",
+    bundlePolicy: "max-bundle",
+    rtcpMuxPolicy: "require",
   };
 
   // Connection monitoring refs
   const statsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const healthCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const healthCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
+    null
+  );
   const lastVideoBytesReceivedRef = useRef<number>(0);
   const lastAudioBytesReceivedRef = useRef<number>(0);
   const lastPacketReceivedRef = useRef<number>(Date.now());
@@ -174,25 +165,25 @@ const VideoCallPage: React.FC = () => {
   // Enhanced TURN usage checking
   const checkTurnUsage = async () => {
     if (!peerConnectionRef.current) return;
-    
+
     try {
       const stats = await peerConnectionRef.current.getStats();
       let turnUsed = false;
-      let localCandidateType = '';
-      let remoteCandidateType = '';
-      
-      stats.forEach(report => {
-        if (report.type === 'candidate-pair' && report.selected) {
+      let localCandidateType = "";
+      let remoteCandidateType = "";
+
+      stats.forEach((report) => {
+        if (report.type === "candidate-pair" && report.selected) {
           // Get local candidate details
           const localCandidate = stats.get(report.localCandidateId);
           if (localCandidate) {
             localCandidateType = localCandidate.candidateType;
             addDebugLog(`📍 Local candidate type: ${localCandidateType}`);
-            if (localCandidateType === 'relay') {
+            if (localCandidateType === "relay") {
               turnUsed = true;
             }
           }
-          
+
           // Get remote candidate details
           const remoteCandidate = stats.get(report.remoteCandidateId);
           if (remoteCandidate) {
@@ -201,12 +192,17 @@ const VideoCallPage: React.FC = () => {
           }
         }
       });
-      
-      addDebugLog(`🔄 TURN Server Usage: ${turnUsed ? '✅ USING TURN' : '❌ NOT using TURN'}`);
-      addDebugLog(`📍 Connection type: ${localCandidateType} -> ${remoteCandidateType}`);
-      
+
+      addDebugLog(
+        `🔄 TURN Server Usage: ${
+          turnUsed ? "✅ USING TURN" : "❌ NOT using TURN"
+        }`
+      );
+      addDebugLog(
+        `📍 Connection type: ${localCandidateType} -> ${remoteCandidateType}`
+      );
     } catch (error) {
-      console.error('Error checking TURN usage:', error);
+      console.error("Error checking TURN usage:", error);
     }
   };
 
@@ -273,8 +269,10 @@ const VideoCallPage: React.FC = () => {
       });
 
       // Check if we're receiving data
-      const isReceivingVideo = videoBytesReceived > lastVideoBytesReceivedRef.current;
-      const isReceivingAudio = audioBytesReceived > lastAudioBytesReceivedRef.current;
+      const isReceivingVideo =
+        videoBytesReceived > lastVideoBytesReceivedRef.current;
+      const isReceivingAudio =
+        audioBytesReceived > lastAudioBytesReceivedRef.current;
 
       if (isReceivingVideo || isReceivingAudio) {
         lastPacketReceivedRef.current = Date.now();
@@ -309,7 +307,9 @@ const VideoCallPage: React.FC = () => {
 
       // Check for prolonged silence
       if (timeSinceLastPacket > 10000 && hasRemoteUser) {
-        addDebugLog("❌ No media received for 10+ seconds - Connection may be dead");
+        addDebugLog(
+          "❌ No media received for 10+ seconds - Connection may be dead"
+        );
         setConnectionQuality("disconnected");
       }
     } catch (error) {
@@ -379,14 +379,14 @@ const VideoCallPage: React.FC = () => {
     const state = peerConnectionRef.current.iceConnectionState;
     addDebugLog(`❄️ ICE connection state: ${state}`);
     // setIceConnectionStatus(state);
-    setWebrtcDebug(prev => ({ ...prev, iceConnectionState: state }));
+    setWebrtcDebug((prev) => ({ ...prev, iceConnectionState: state }));
 
-    if (state === 'connected') {
+    if (state === "connected") {
       addDebugLog("🎉 ICE connected successfully!");
-    } else if (state === 'failed') {
+    } else if (state === "failed") {
       addDebugLog("❌ ICE connection failed");
       setTimeout(() => {
-        if (peerConnectionRef.current?.iceConnectionState === 'failed') {
+        if (peerConnectionRef.current?.iceConnectionState === "failed") {
           addDebugLog("🔄 Attempting to restart ICE...");
           createOffer();
         }
@@ -400,7 +400,7 @@ const VideoCallPage: React.FC = () => {
     const state = peerConnectionRef.current.signalingState;
     addDebugLog(`📶 Signaling state: ${state}`);
     // setSignalingStatus(state);
-    setWebrtcDebug(prev => ({ ...prev, signalingState: state }));
+    setWebrtcDebug((prev) => ({ ...prev, signalingState: state }));
   };
 
   // Check if video call is actively transmitting media
@@ -432,13 +432,14 @@ const VideoCallPage: React.FC = () => {
 
       // Create peer connection immediately after getting media
       createPeerConnection();
-
     } catch (err) {
       console.error("❌ Failed to access media devices:", err);
       setIsVideoOff(true);
-      
+
       // Show error to user
-      alert("Failed to access camera and microphone. Please check permissions.");
+      alert(
+        "Failed to access camera and microphone. Please check permissions."
+      );
     }
   };
 
@@ -462,19 +463,21 @@ const VideoCallPage: React.FC = () => {
 
     // Enhanced remote track handling
     peerConnection.ontrack = (event) => {
-      addDebugLog(`📹 Received remote track: ${event.track.kind} (${event.streams.length} streams)`);
-      
+      addDebugLog(
+        `📹 Received remote track: ${event.track.kind} (${event.streams.length} streams)`
+      );
+
       if (event.streams[0] && remoteVideoRef.current) {
         remoteVideoRef.current.srcObject = event.streams[0];
-        setWebrtcDebug(prev => ({ ...prev, hasRemoteTrack: true }));
+        setWebrtcDebug((prev) => ({ ...prev, hasRemoteTrack: true }));
         addDebugLog("✅ Remote video stream set successfully");
         lastPacketReceivedRef.current = Date.now();
-        
+
         // Enhanced video event listeners
         remoteVideoRef.current.onloadedmetadata = () => {
           addDebugLog("🎥 Remote video metadata loaded");
         };
-        
+
         remoteVideoRef.current.onplay = () => {
           addDebugLog("▶️ Remote video started playing");
         };
@@ -484,13 +487,15 @@ const VideoCallPage: React.FC = () => {
     // Enhanced ICE candidate handling
     peerConnection.onicecandidate = (event) => {
       if (event.candidate) {
-        addDebugLog(`🧊 ICE candidate: ${event.candidate.type} - ${event.candidate.protocol}`);
-        
+        addDebugLog(
+          `🧊 ICE candidate: ${event.candidate.type} - ${event.candidate.protocol}`
+        );
+
         // Check for relay candidates (TURN)
-        if (event.candidate.type === 'relay') {
+        if (event.candidate.type === "relay") {
           addDebugLog("✅ TURN server is being used!");
         }
-        
+
         if (socketRef.current) {
           socketRef.current.emit("ice-candidate", {
             roomId,
@@ -505,7 +510,7 @@ const VideoCallPage: React.FC = () => {
     // ICE gathering state
     peerConnection.onicegatheringstatechange = () => {
       const state = peerConnection.iceGatheringState;
-      setWebrtcDebug(prev => ({ ...prev, iceGatheringState: state }));
+      setWebrtcDebug((prev) => ({ ...prev, iceGatheringState: state }));
       addDebugLog(`🧊 ICE gathering state: ${state}`);
     };
 
@@ -520,7 +525,7 @@ const VideoCallPage: React.FC = () => {
       await createOffer();
     };
 
-    setWebrtcDebug(prev => ({ ...prev, pcCreated: true }));
+    setWebrtcDebug((prev) => ({ ...prev, pcCreated: true }));
     peerConnectionRef.current = peerConnection;
     addDebugLog("✅ Peer connection created successfully");
     return peerConnection;
@@ -545,12 +550,12 @@ const VideoCallPage: React.FC = () => {
 
       const offer = await peerConnectionRef.current.createOffer({
         offerToReceiveAudio: true,
-        offerToReceiveVideo: true
+        offerToReceiveVideo: true,
       });
       addDebugLog(`✅ Offer created: ${offer.type}`);
 
       await peerConnectionRef.current.setLocalDescription(offer);
-      setWebrtcDebug(prev => ({ ...prev, localDescriptionSet: true }));
+      setWebrtcDebug((prev) => ({ ...prev, localDescriptionSet: true }));
       addDebugLog("✅ Local description set");
 
       if (socketRef.current) {
@@ -563,12 +568,11 @@ const VideoCallPage: React.FC = () => {
 
       // Set timeout to check connection
       setTimeout(() => {
-        if (peerConnectionRef.current?.iceConnectionState !== 'connected') {
+        if (peerConnectionRef.current?.iceConnectionState !== "connected") {
           addDebugLog("⏰ Offer timeout - checking connection status");
           checkTurnUsage();
         }
       }, 10000);
-
     } catch (error) {
       addDebugLog(`❌ Error creating offer: ${error}`);
       console.error("Error creating offer:", error);
@@ -600,7 +604,7 @@ const VideoCallPage: React.FC = () => {
       addDebugLog("🔧 Setting remote description (offer)...");
 
       await peerConnection.setRemoteDescription(offer);
-      setWebrtcDebug(prev => ({ ...prev, remoteDescriptionSet: true }));
+      setWebrtcDebug((prev) => ({ ...prev, remoteDescriptionSet: true }));
       addDebugLog("✅ Remote description set");
 
       // Process queued ICE candidates after remote description is set
@@ -640,12 +644,14 @@ const VideoCallPage: React.FC = () => {
       if (peerConnection.signalingState === "have-local-offer") {
         addDebugLog("🔧 Setting remote description (answer)...");
         await peerConnection.setRemoteDescription(answer);
-        setWebrtcDebug(prev => ({ ...prev, remoteDescriptionSet: true }));
+        setWebrtcDebug((prev) => ({ ...prev, remoteDescriptionSet: true }));
         addDebugLog("✅ Remote description set successfully");
 
         processQueuedICECandidates();
       } else {
-        addDebugLog(`⚠️ Cannot set remote answer in current state: ${peerConnection.signalingState}`);
+        addDebugLog(
+          `⚠️ Cannot set remote answer in current state: ${peerConnection.signalingState}`
+        );
       }
     } catch (error) {
       addDebugLog(`❌ Error handling answer: ${error}`);
@@ -655,9 +661,12 @@ const VideoCallPage: React.FC = () => {
 
   // Process queued ICE candidates
   const processQueuedICECandidates = async () => {
-    if (!peerConnectionRef.current || iceCandidateQueueRef.current.length === 0) return;
+    if (!peerConnectionRef.current || iceCandidateQueueRef.current.length === 0)
+      return;
 
-    addDebugLog(`🔧 Processing ${iceCandidateQueueRef.current.length} queued ICE candidates...`);
+    addDebugLog(
+      `🔧 Processing ${iceCandidateQueueRef.current.length} queued ICE candidates...`
+    );
     const queue = [...iceCandidateQueueRef.current];
     iceCandidateQueueRef.current = [];
 
@@ -699,13 +708,13 @@ const VideoCallPage: React.FC = () => {
   // Initialize Socket Connection - AUTO START MEDIA
   useEffect(() => {
     const socketUrl = import.meta.env.VITE_SIGNALING_SERVER_URL;
-    console.log("Socket url is ***************8888",socketUrl);
+    console.log("Socket url is ***************8888", socketUrl);
     const socket = io(socketUrl, {
       transports: ["websocket", "polling"],
       timeout: 10000,
       reconnection: true,
       reconnectionAttempts: 5,
-      reconnectionDelay: 1000
+      reconnectionDelay: 1000,
     });
 
     socketRef.current = socket;
@@ -717,7 +726,7 @@ const VideoCallPage: React.FC = () => {
       if (roomId) {
         addDebugLog(`🚪 Joining room: ${roomId}`);
         socket.emit("join-room", roomId, userId);
-        
+
         // AUTO START MEDIA WHEN JOINING ROOM
         addDebugLog("🎬 Auto-initializing media...");
         initializeMedia();
@@ -737,8 +746,11 @@ const VideoCallPage: React.FC = () => {
     // WebRTC Signaling Events
     socket.on("user-connected", (remoteUserId: string) => {
       addDebugLog(`👤 Remote user connected: ${remoteUserId}`);
+      toast.success("Remote user has joined the call!",{
+        duration:5000
+      });
       setHasRemoteUser(true);
-      
+
       // If we already have media and peer connection, create offer
       if (localStreamRef.current && peerConnectionRef.current) {
         addDebugLog("🤝 Creating offer for new user");
@@ -751,21 +763,30 @@ const VideoCallPage: React.FC = () => {
       setHasRemoteUser(false);
     });
 
-    socket.on("offer", async (data: { offer: RTCSessionDescriptionInit; from: string }) => {
-      addDebugLog(`📥 Received offer from: ${data.from}`);
-      setHasRemoteUser(true);
-      await handleOffer(data.offer);
-    });
+    socket.on(
+      "offer",
+      async (data: { offer: RTCSessionDescriptionInit; from: string }) => {
+        addDebugLog(`📥 Received offer from: ${data.from}`);
+        setHasRemoteUser(true);
+        await handleOffer(data.offer);
+      }
+    );
 
-    socket.on("answer", async (data: { answer: RTCSessionDescriptionInit; from: string }) => {
-      addDebugLog(`📥 Received answer from: ${data.from}`);
-      await handleAnswer(data.answer);
-    });
+    socket.on(
+      "answer",
+      async (data: { answer: RTCSessionDescriptionInit; from: string }) => {
+        addDebugLog(`📥 Received answer from: ${data.from}`);
+        await handleAnswer(data.answer);
+      }
+    );
 
-    socket.on("ice-candidate", async (data: { candidate: RTCIceCandidateInit; from: string }) => {
-      addDebugLog(`🧊 Received ICE candidate from: ${data.from}`);
-      await handleIceCandidate(data.candidate);
-    });
+    socket.on(
+      "ice-candidate",
+      async (data: { candidate: RTCIceCandidateInit; from: string }) => {
+        addDebugLog(`🧊 Received ICE candidate from: ${data.from}`);
+        await handleIceCandidate(data.candidate);
+      }
+    );
 
     socket.on("room-full", () => {
       alert("Room is full! Only two users allowed per room.");
@@ -805,11 +826,11 @@ const VideoCallPage: React.FC = () => {
       pcCreated: false,
       localDescriptionSet: false,
       remoteDescriptionSet: false,
-      iceGatheringState: 'new',
-      iceConnectionState: 'new',
-      signalingState: 'stable',
+      iceGatheringState: "new",
+      iceConnectionState: "new",
+      signalingState: "stable",
       hasRemoteTrack: false,
-      connectionState: 'new'
+      connectionState: "new",
     });
     iceCandidateQueueRef.current = [];
   };
@@ -831,6 +852,34 @@ const VideoCallPage: React.FC = () => {
 
     navigate("/");
   };
+
+  const sender = peerConnectionRef.current
+    ?.getSenders()
+    .find((s) => s.track?.kind === "video");
+
+  const handleScreenSharing = async () => {
+    const screenStream = await navigator.mediaDevices.getDisplayMedia({
+      video: true,
+    });
+    const screenTrack = screenStream.getVideoTracks()[0];
+    if (sender) sender.replaceTrack(screenTrack);
+
+    screenTrack.onended = async () => {
+      handleVideoSharing();
+    };
+  };
+  const handleVideoSharing = async () => {
+    const cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { width: 1280, height: 720 },
+      audio: true,
+    });
+    const cameraTrack = cameraStream.getVideoTracks()[0];
+    if (sender) sender.replaceTrack(cameraTrack);
+  };
+  if (isScreenSharing) {
+    handleScreenSharing();
+    setIsScreenSharing(false);
+  }
 
   const handleToggleMute = () => {
     if (localStreamRef.current) {
@@ -857,14 +906,7 @@ const VideoCallPage: React.FC = () => {
     alert("Room ID copied to clipboard!");
   };
 
-  // Manual reconnection for debugging
-  const handleForceReconnect = () => {
-    addDebugLog("🔄 Manual reconnection triggered");
-    closePeerConnection();
-    setTimeout(() => {
-      initializeMedia();
-    }, 1000);
-  };
+
 
   // Get connection quality color
   const getQualityColor = (quality: string) => {
@@ -902,17 +944,27 @@ const VideoCallPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-900">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-4">
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-white">VideoConnect</h1>
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 bg-blue-500 rounded-full mx-auto flex items-center justify-center">
+              <svg className="w-8 h-8" fill="white" viewBox="0 0 20 20">
+                <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v8a2 2 0 01-2 2h-2a2 2 0 01-2-2V6z" />
+              </svg>
+            </div>
+
+            <VideoConnectLogo width={150} height={40} className="opacity-80" />
+          </div>
+          
           <div className="flex items-center gap-4">
+            
             <div
               className={`w-3 h-3 rounded-full ${
                 isConnected ? "bg-green-500" : "bg-red-500"
               }`}
             ></div>
-            <div className="bg-gray-800 px-4 py-2 rounded-lg">
+            <div className="bg-gray-800 px-4 py-2 rounded-lg ">
               <span className="text-gray-300 mr-2">Room:</span>
               <span className="text-white font-mono">{roomId}</span>
               <button
@@ -922,6 +974,10 @@ const VideoCallPage: React.FC = () => {
                 📋
               </button>
             </div>
+              <div className="text-white cursor-pointer hover:opacity-80">
+            {" "}
+            <FiSettings size={24} />
+          </div>
           </div>
         </div>
 
@@ -932,62 +988,8 @@ const VideoCallPage: React.FC = () => {
           </div>
         )}
 
-        {hasRemoteUser && (
-          <div className="bg-green-500 text-white p-4 rounded-lg mb-4">
-            Remote user joined the call!
-          </div>
-        )}
-
-        {/* Enhanced Debug Panel */}
-        <div className="bg-gray-800 rounded-lg p-4 mb-4">
-          <h3 className="text-white text-lg font-semibold mb-3">WebRTC Debug Panel</h3>
-          
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-white text-xs">
-            <div className={`p-2 rounded ${webrtcDebug.pcCreated ? 'bg-green-500' : 'bg-red-500'}`}>
-              PC Created: {webrtcDebug.pcCreated ? '✅' : '❌'}
-            </div>
-            <div className={`p-2 rounded ${webrtcDebug.localDescriptionSet ? 'bg-green-500' : 'bg-red-500'}`}>
-              Local Desc: {webrtcDebug.localDescriptionSet ? '✅' : '❌'}
-            </div>
-            <div className={`p-2 rounded ${webrtcDebug.remoteDescriptionSet ? 'bg-green-500' : 'bg-red-500'}`}>
-              Remote Desc: {webrtcDebug.remoteDescriptionSet ? '✅' : '❌'}
-            </div>
-            <div className={`p-2 rounded ${webrtcDebug.hasRemoteTrack ? 'bg-green-500' : 'bg-red-500'}`}>
-              Remote Track: {webrtcDebug.hasRemoteTrack ? '✅' : '❌'}
-            </div>
-          </div>
-
-          <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2 text-white text-xs">
-            <div>ICE State: <span className="font-mono">{webrtcDebug.iceConnectionState}</span></div>
-            <div>Signaling: <span className="font-mono">{webrtcDebug.signalingState}</span></div>
-            <div>Gathering: <span className="font-mono">{webrtcDebug.iceGatheringState}</span></div>
-            <div>Connection: <span className="font-mono">{webrtcDebug.connectionState}</span></div>
-          </div>
-
-          <div className="mt-3 flex gap-2">
-            <button
-              onClick={checkTurnUsage}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm"
-            >
-              Check TURN Usage
-            </button>
-            <button
-              onClick={handleForceReconnect}
-              className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm"
-            >
-              Force Reconnect
-            </button>
-            <button
-              onClick={createOffer}
-              className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm"
-            >
-              Create Offer
-            </button>
-          </div>
-        </div>
-
         {/* Video Grid */}
-        <div className="bg-black rounded-lg p-4 max-w-6xl mx-auto">
+        <div className="bg-black rounded-lg p-4 max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             {/* Local Video */}
             <div className="relative bg-gray-800 rounded-lg  flex items-center justify-center">
@@ -1089,6 +1091,12 @@ const VideoCallPage: React.FC = () => {
             </button>
 
             <button
+              onClick={() => setIsScreenSharing(true)}
+              className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-full font-semibold flex items-center gap-2 transition duration-200"
+            >
+              Screen Share
+            </button>
+            <button
               onClick={handleEndCall}
               className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-full font-semibold flex items-center gap-2 transition duration-200"
             >
@@ -1110,7 +1118,9 @@ const VideoCallPage: React.FC = () => {
                     isConnected ? "bg-green-500" : "bg-red-500"
                   }`}
                 ></div>
-                <span>Signaling: {isConnected ? "Connected" : "Disconnected"}</span>
+                <span>
+                  Signaling: {isConnected ? "Connected" : "Disconnected"}
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 <div
