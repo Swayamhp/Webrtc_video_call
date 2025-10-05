@@ -1203,7 +1203,7 @@ useEffect(() => {
                 ref={remoteVideoRef}
                 autoPlay
                 playsInline
-                className="md:w-full md:h-full  rounded-lg"
+                className="w-full max-h-[300px]  rounded-lg"
               ></video>
 
               {/* Waiting for remote participant */}
