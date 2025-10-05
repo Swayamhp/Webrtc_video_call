@@ -574,11 +574,8 @@ const VideoCallPage: React.FC = () => {
         offerToReceiveAudio: true,
         offerToReceiveVideo: true,
       });
-      let  sdp = offer.sdp || "";
-      sdp = sdp.replace(/a=fmtp:111 minptime=10;useinbandfec=1/g, 'a=fmtp:111 minptime=10;useinbandfec=1;maxaveragebitrate=510000');      
-      addDebugLog(`✅ Offer created:************* ${offer.type}`);
 
-      await peerConnectionRef.current.setLocalDescription({ type: 'offer', sdp });
+      await peerConnectionRef.current.setLocalDescription(offer);
       setWebrtcDebug((prev) => ({ ...prev, localDescriptionSet: true }));
       addDebugLog("✅ Local description set");
 
@@ -1147,7 +1144,7 @@ useEffect(() => {
 
         {/* Video Grid */}
         <div className={`bg-black rounded-lg p-4 max-w-7xl flex flex-col gap-4 mx-auto`}>
-          <div className={`${selectLayout=='reset-layout'? 'grid grid-cols-2':'flex flex-col'} gap-4`}>
+          <div className={`${selectLayout=='reset-layout'? 'grid md:grid-cols-2 grid-cols-1':'flex flex-col'} gap-4 ` }>
 
   
             {/* Local Video */}
@@ -1206,7 +1203,7 @@ useEffect(() => {
                 ref={remoteVideoRef}
                 autoPlay
                 playsInline
-                className="w-full h-full rounded-lg"
+                className="w-full max-h-screen rounded-lg"
               ></video>
 
               {/* Waiting for remote participant */}
@@ -1243,7 +1240,7 @@ useEffect(() => {
          
         </div>
           {/* Controls */}
-          <div className="flex justify-center gap-4 items-center">
+          <div className="flex justify-center md:gap-4 gap-3 items-center">
             <button
               onClick={handleToggleMute}
               title="Mute/Unmute"
