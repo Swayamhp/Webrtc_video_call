@@ -1144,7 +1144,7 @@ useEffect(() => {
 
         {/* Video Grid */}
         <div className={`bg-black rounded-lg p-4 max-w-7xl flex flex-col gap-4 mx-auto`}>
-          <div className={`${selectLayout=='reset-layout'? 'grid md:grid-cols-2 grid-cols-1':'flex flex-col'} gap-4 ` }>
+          <div className={`${selectLayout=='reset-layout'? 'grid md:grid-cols-2 grid-cols-1':'flex flex-col max-h-screen'} gap-4 ` }>
 
   
             {/* Local Video */}
