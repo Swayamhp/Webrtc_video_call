@@ -2,9 +2,20 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import io, { Socket } from "socket.io-client";
-import { FiSettings } from "react-icons/fi";
+import {
+  FiCopy,
+  FiSettings,
+  FiVideo,
+  FiVideoOff,
+} from "react-icons/fi";
 import VideoConnectLogo from "../components/VideoConnectLogo";
 import toast from "react-hot-toast";
+import VideoSettingModal from "../components/VideoSettingModal";
+import { FiMaximize, FiMinimize } from "react-icons/fi";
+import { FiShare2, FiMic, FiMicOff, FiMonitor } from "react-icons/fi";
+import { MdCallEnd } from "react-icons/md";
+import userJoinedSound from "../assets/userJoined.mp3";
+import userLeftSound from "../assets/userLeft.mp3";
 
 // Connection monitoring interface
 // interface ConnectionStats {
@@ -64,6 +75,10 @@ const VideoCallPage: React.FC = () => {
     hasRemoteTrack: false,
     connectionState: "new",
   });
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+   const [selectLayout, setLayout] = useState("reset-layout");
+  const [resolution, setResolution] = useState("720p");
+  const [micVolume, setMicVolume] = useState(50);
 
   // Enhanced WebRTC Configuration
   const rtcConfig: RTCConfiguration = {
@@ -156,6 +171,8 @@ const VideoCallPage: React.FC = () => {
   const lastVideoBytesReceivedRef = useRef<number>(0);
   const lastAudioBytesReceivedRef = useRef<number>(0);
   const lastPacketReceivedRef = useRef<number>(Date.now());
+  const joinSound = useRef(new Audio(userJoinedSound));
+  const leaveSound = useRef(new Audio(userLeftSound));
 
   // Debug logging function
   const addDebugLog = (message: string) => {
@@ -418,7 +435,12 @@ const VideoCallPage: React.FC = () => {
       addDebugLog("🔄 Auto-starting media stream...");
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: 1280, height: 720 },
-        audio: true,
+        audio: {sampleRate: 48000,   // standard WebRTC sample rate
+    channelCount: 1,     // mono is fine
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true
+        }
       });
 
       localStreamRef.current = stream;
@@ -552,9 +574,11 @@ const VideoCallPage: React.FC = () => {
         offerToReceiveAudio: true,
         offerToReceiveVideo: true,
       });
-      addDebugLog(`✅ Offer created: ${offer.type}`);
+      let  sdp = offer.sdp || "";
+      sdp = sdp.replace(/a=fmtp:111 minptime=10;useinbandfec=1/g, 'a=fmtp:111 minptime=10;useinbandfec=1;maxaveragebitrate=510000');      
+      addDebugLog(`✅ Offer created:************* ${offer.type}`);
 
-      await peerConnectionRef.current.setLocalDescription(offer);
+      await peerConnectionRef.current.setLocalDescription({ type: 'offer', sdp });
       setWebrtcDebug((prev) => ({ ...prev, localDescriptionSet: true }));
       addDebugLog("✅ Local description set");
 
@@ -743,12 +767,18 @@ const VideoCallPage: React.FC = () => {
       setIsConnected(false);
     });
 
+    const handleJoin = () => joinSound.current.play().catch(e => console.error(e));
+    const handleLeave = () => leaveSound.current.play().catch(e => console.error(e));
+
     // WebRTC Signaling Events
     socket.on("user-connected", (remoteUserId: string) => {
+      
       addDebugLog(`👤 Remote user connected: ${remoteUserId}`);
-      toast.success("Remote user has joined the call!",{
-        duration:5000
+      toast.success("Remote user has joined the call!", {
+        duration: 5000,
       });
+      handleJoin();
+      
       setHasRemoteUser(true);
 
       // If we already have media and peer connection, create offer
@@ -756,10 +786,13 @@ const VideoCallPage: React.FC = () => {
         addDebugLog("🤝 Creating offer for new user");
         createOffer();
       }
+      
     });
 
     socket.on("user-disconnected", () => {
       addDebugLog("👤 Remote user disconnected");
+      toast.error("Remote user has left the call", { duration: 5000 });
+      handleLeave();
       setHasRemoteUser(false);
     });
 
@@ -871,7 +904,13 @@ const VideoCallPage: React.FC = () => {
   const handleVideoSharing = async () => {
     const cameraStream = await navigator.mediaDevices.getUserMedia({
       video: { width: 1280, height: 720 },
-      audio: true,
+      audio: {
+        sampleRate: 48000,   // standard WebRTC sample rate
+    channelCount: 1,     // mono is fine
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true
+      }
     });
     const cameraTrack = cameraStream.getVideoTracks()[0];
     if (sender) sender.replaceTrack(cameraTrack);
@@ -903,10 +942,8 @@ const VideoCallPage: React.FC = () => {
 
   const handleCopyRoomId = () => {
     navigator.clipboard.writeText(roomId || "");
-    alert("Room ID copied to clipboard!");
+    toast.success("Room ID copied to clipboard!", { duration: 2000 });
   };
-
-
 
   // Get connection quality color
   const getQualityColor = (quality: string) => {
@@ -941,43 +978,163 @@ const VideoCallPage: React.FC = () => {
   //       return "bg-gray-500";
   //   }
   // };
+   function handleShare() {
+    if (navigator.share) {
+      navigator.share({
+        title: "Video Call",
+        text: "Join my video call",
+        url: window.location.href,
+      });
+    }
+  }
+// // Track WebRTC stats
+// const statsRef = useRef<{ lastBytesSent?: number; lastTimestamp?: number }>({});
+
+// useEffect(() => {
+//   const interval = setInterval(async () => {
+//     const pc = peerConnectionRef.current;
+//     if (!pc) return;
+
+//     try {
+//       const stats = await pc.getStats();
+//       stats.forEach(report => {
+//         if (report.type === "outbound-rtp" && report.kind === "audio") {
+//           const bytesSent = report.bytesSent;
+//           const timestamp = report.timestamp;
+
+//           // Store previous values to calculate bitrate
+//           if (!statsRef.current.lastBytesSent) {
+//             statsRef.current.lastBytesSent = bytesSent;
+//             statsRef.current.lastTimestamp = timestamp;
+//             return;
+//           }
+
+//           const deltaBytes = bytesSent - statsRef.current.lastBytesSent;
+//           const deltaTime = (timestamp - statsRef.current.lastTimestamp!) / 1000; // ms → sec
+
+//           const bitrate = (deltaBytes * 8) / deltaTime; // bits per second
+//           const kbps = (bitrate / 1000).toFixed(2); // kbps
+
+//           console.log(`Audio bitrate**********8: ${kbps} kbps`);
+
+//           statsRef.current.lastBytesSent = bytesSent;
+//           statsRef.current.lastTimestamp = timestamp;
+//         }
+//       });
+//     } catch (error) {
+//       console.error('Error getting WebRTC stats:', error);
+//     }
+//   }, 2000);
+
+//   return () => clearInterval(interval);
+// }, []);
+useEffect(() => {
+  const localVideo = document.getElementById("localVideo") as HTMLVideoElement;
+  const remoteVideo = document.getElementById("remoteVideo") as HTMLVideoElement;
+  const remoteVidContainer = document.querySelector(".remoteContainer") as HTMLElement;
+  const localVidContainer = document.querySelector(".localContainer") as HTMLElement;
+
+  const handleLayout = async () => {
+    try {
+      // Always exit PiP before switching
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture();
+      }
+
+      // Reset both visibility first
+      remoteVidContainer?.classList.remove('hidden');
+      localVidContainer?.classList.remove("hidden");
+      console.log("Selected layout:", selectLayout);
+     
+      
+      if (selectLayout === "user-fullscreen") {
+        // Local fullscreen, remote PiP
+        localVideo.className = "w-full h-full ";
+        remoteVidContainer.classList.add("hidden");
+        await remoteVideo.requestPictureInPicture();
+
+      } else if (selectLayout === "remote-user-fullscreen") {
+        // Remote fullscreen, local PiP
+        remoteVideo.className = "w-full h-full ";
+        await localVideo.requestPictureInPicture();
+
+      }
+    } catch (err) {
+      console.error("PiP error:", err);
+    }
+  };
+
+  handleLayout();
+
+  // ✅ Reset state when PiP is closed
+  const handlePiPExit = () => {
+    console.log("PiP stopped, resetting layout");
+    setLayout("reset-layout");
+  };
+
+  localVideo?.addEventListener("leavepictureinpicture", handlePiPExit);
+  remoteVideo?.addEventListener("leavepictureinpicture", handlePiPExit);
+
+  return () => {
+    localVideo?.removeEventListener("leavepictureinpicture", handlePiPExit);
+    remoteVideo?.removeEventListener("leavepictureinpicture", handlePiPExit);
+  };
+}, [selectLayout]);
+
 
   return (
     <div className="min-h-screen bg-gray-900">
       <div className="container mx-auto px-4 py-4">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex justify-between items-center mb-2">
           <div className="flex items-center space-x-4">
-            <div className="w-12 h-12 bg-blue-500 rounded-full mx-auto flex items-center justify-center">
+            <div className="w-12 h-12 bg-blue-800 rounded-full mx-auto flex items-center justify-center">
               <svg className="w-8 h-8" fill="white" viewBox="0 0 20 20">
                 <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v8a2 2 0 01-2 2h-2a2 2 0 01-2-2V6z" />
               </svg>
             </div>
 
-            <VideoConnectLogo width={150} height={40} className="opacity-80" />
+            <VideoConnectLogo
+              width={150}
+              height={40}
+              className="opacity-80 hidden md:block"
+            />
           </div>
-          
+
           <div className="flex items-center gap-4">
-            
+            <div title="Share Room Url" onClick={handleShare} className="cursor-pointer">
+              <FiShare2 className="w-6 h-6 text-gray-400 hover:text-gray-500" />
+            </div>
             <div
               className={`w-3 h-3 rounded-full ${
                 isConnected ? "bg-green-500" : "bg-red-500"
               }`}
             ></div>
-            <div className="bg-gray-800 px-4 py-2 rounded-lg ">
+            <div className="bg-gray-800 md:px-4 px-2 py-2 rounded-lg flex-shrink-2">
               <span className="text-gray-300 mr-2">Room:</span>
               <span className="text-white font-mono">{roomId}</span>
               <button
                 onClick={handleCopyRoomId}
                 className="ml-2 text-blue-400 hover:text-blue-300"
               >
-                📋
+                <FiCopy className="w-4 h-4 translate-y-0.5" />
               </button>
             </div>
-              <div className="text-white cursor-pointer hover:opacity-80">
-            {" "}
-            <FiSettings size={24} />
-          </div>
+            <div
+              className="text-gray-400 cursor-pointer hover:opacity-80"
+              onClick={() => {
+                const el = document.querySelector(
+                  ".settings-icon"
+                ) as HTMLElement;
+                el?.classList.add("animate-spin");
+                setTimeout(() => {
+                  el?.classList.remove("animate-spin");
+                }, 500);
+                setIsSettingsOpen(!isSettingsOpen);
+              }}
+            >
+              <FiSettings size={24} className="settings-icon" />
+            </div>
           </div>
         </div>
 
@@ -989,27 +1146,38 @@ const VideoCallPage: React.FC = () => {
         )}
 
         {/* Video Grid */}
-        <div className="bg-black rounded-lg p-4 max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div className={`bg-black rounded-lg p-4 max-w-7xl flex flex-col gap-4 mx-auto`}>
+          <div className={`${selectLayout=='reset-layout'? 'grid grid-cols-2':'flex flex-col'} gap-4`}>
+
+  
             {/* Local Video */}
-            <div className="relative bg-gray-800 rounded-lg  flex items-center justify-center">
+            <div className={`aspect-video bg-gray-800 rounded-lg ${selectLayout=='remote-user-fullscreen' ? 'absolute inset-0 opacity-0 max-w-[2] max-h-[300px]':'relative'}   items-center justify-center localContainer`}>
               <video
+                id="localVideo"
                 ref={localVideoRef}
                 autoPlay
                 playsInline
                 muted
-                className="w-full h-full rounded-lg"
+                className=" w-full h-full rounded-lg scale-x-[-1]" // Mirror effect for self-view
               ></video>
 
               {isVideoOff && (
                 <div className="absolute inset-0 bg-gray-900 flex items-center justify-center">
-                  <span className="text-white text-xl">Video Off</span>
+                  <span className="text-white text-xl">
+                    {" "}
+                    <FiVideoOff className="inline" />{" "}
+                  </span>
                 </div>
               )}
 
-              <div className="absolute bottom-4 left-4 bg-black bg-opacity-50 px-3 py-1 rounded-full">
-                <span className="text-white text-sm">
-                  You {isMuted ? "🔇" : "🎤"}
+              <div className="absolute md:bottom-4 md:left-4 bottom-2 left-2 bg-black bg-opacity-50 px-3 py-1 rounded-full">
+                <span  className="text-white text-sm">
+                  You{" "}
+                  {isMuted ? (
+                    <FiMicOff className="inline" />
+                  ) : (
+                    <FiMic className="inline" />
+                  )}
                 </span>
               </div>
 
@@ -1022,11 +1190,19 @@ const VideoCallPage: React.FC = () => {
                   </div>
                 </div>
               )}
+            <div 
+            onClick={() => selectLayout=="user-fullscreen" ? setLayout("reset-layout") : setLayout("user-fullscreen")}
+            className="absolute top-4 right-4 bg-black bg-opacity-50 p-2 rounded-full cursor-pointer text-white">
+              {selectLayout=="user-fullscreen" ? <FiMinimize /> : <FiMaximize />}
+            </div>
+ 
+
             </div>
 
             {/* Remote Video */}
-            <div className="relative bg-gray-800 rounded-lg aspect-video flex items-center justify-center">
+            <div className="relative bg-gray-800  rounded-lg aspect-video flex items-center justify-center remoteContainer z-50">
               <video
+                id="remoteVideo"
                 ref={remoteVideoRef}
                 autoPlay
                 playsInline
@@ -1037,15 +1213,21 @@ const VideoCallPage: React.FC = () => {
               {!hasRemoteUser && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <div className="animate-pulse text-white text-center">
-                    <p className="text-lg mb-4">Waiting for participant...</p>
+                    <p className="md:text-lg md:mb-4 mb-2 text-sm ">Waiting for participant...</p>
                     <p className="text-gray-400 text-sm">
                       Share the room ID to invite someone
                     </p>
                   </div>
                 </div>
               )}
+            <div
+              onClick={() => selectLayout=="remote-user-fullscreen" ? setLayout("reset-layout") : setLayout("remote-user-fullscreen")}
+              className="absolute top-4 right-4 bg-black bg-opacity-50 p-2 rounded-full cursor-pointer text-white"
+            >
+              {selectLayout=="remote-user-fullscreen" ? <FiMinimize /> : <FiMaximize />}
+            </div>
 
-              <div className="absolute bottom-4 left-4 bg-black bg-opacity-50 px-3 py-1 rounded-full">
+              <div className="absolute md:bottom-4 md:left-4 bottom-2 left-2 bg-black bg-opacity-50 px-3 py-1 rounded-full">
                 <span className="text-white text-sm">
                   {hasRemoteUser ? "Remote User" : "Waiting..."}
                 </span>
@@ -1058,12 +1240,13 @@ const VideoCallPage: React.FC = () => {
                 </div>
               )}
             </div>
-          </div>
-
+         
+        </div>
           {/* Controls */}
-          <div className="flex justify-center gap-4">
+          <div className="flex justify-center gap-4 items-center">
             <button
               onClick={handleToggleMute}
+              title="Mute/Unmute"
               disabled={!isCallActive}
               className={`${
                 isMuted
@@ -1073,12 +1256,17 @@ const VideoCallPage: React.FC = () => {
                 !isCallActive ? "opacity-50 cursor-not-allowed" : ""
               } text-white px-6 py-3 rounded-full font-semibold flex items-center gap-2 transition duration-200`}
             >
-              {isMuted ? "🔇" : "🎤"} {isMuted ? "Unmute" : "Mute"}
+              {isMuted ? (
+                <FiMicOff className="inline" />
+              ) : (
+                <FiMic className="inline" />
+              )}
             </button>
 
             <button
               onClick={handleToggleVideo}
               disabled={!isCallActive}
+              title="Video On/Off"
               className={`${
                 isVideoOff
                   ? "bg-red-500 hover:bg-red-600"
@@ -1087,24 +1275,43 @@ const VideoCallPage: React.FC = () => {
                 !isCallActive ? "opacity-50 cursor-not-allowed" : ""
               } text-white px-6 py-3 rounded-full font-semibold flex items-center gap-2 transition duration-200`}
             >
-              {isVideoOff ? "📷 Off" : "📹 On"}
+              {isVideoOff ? (
+                <FiVideoOff className="inline" />
+              ) : (
+                <FiVideo className="inline" />
+              )}
             </button>
 
             <button
+              title="Share Screen"
               onClick={() => setIsScreenSharing(true)}
-              className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-full font-semibold flex items-center gap-2 transition duration-200"
+              className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-full font-semibold flex items-center gap-2 transition duration-200"
             >
-              Screen Share
+              <FiMonitor className="inline" />
             </button>
             <button
+              title="End Call"
               onClick={handleEndCall}
               className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-full font-semibold flex items-center gap-2 transition duration-200"
             >
-              📞 End Call
+              <MdCallEnd className="inline" />
             </button>
           </div>
         </div>
-
+             {isSettingsOpen && (
+                <div className=" absolute bottom-13 right-[36%]">
+                  <VideoSettingModal
+                    isOpen={true}
+                    onClose={() => setIsSettingsOpen(false)}
+                    selectLayout={selectLayout}
+                    setLayout={setLayout}
+                    resolution={resolution}
+                    setResolution={setResolution}
+                    micVolume={micVolume}
+                    setMicVolume={setMicVolume}
+                  />
+                </div>
+              )}
         {/* Status Info */}
         <div className="max-w-6xl mx-auto mt-6">
           <div className="bg-gray-800 rounded-lg p-4">
