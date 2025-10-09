@@ -55,9 +55,9 @@ const Hero: React.FC = () => {
               >
                 Start Free Call
               </button>
-              <button className="px-8 py-4 border-2 border-gray-300 text-gray-700 text-lg font-semibold rounded-xl hover:border-blue-400 hover:text-blue-600 transition-all">
+              {/* <button className="px-8 py-4 border-2 border-gray-300 text-gray-700 text-lg font-semibold rounded-xl hover:border-blue-400 hover:text-blue-600 transition-all">
                 Download App
-              </button>
+              </button> */}
             </div>
 
             {/* Display current room info if available */}

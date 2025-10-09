@@ -40,21 +40,21 @@ const Header: React.FC<headerProps> = ({handleScroll}) => {
             >
               How It Works
             </a>
-            <a
+            {/* <a
               href="#download"
               className="text-gray-600 hover:text-blue-600 transition-colors"
             >
               Download
-            </a>
+            </a> */}
           </nav>
 
           <div className="flex space-x-4">
             <button className="px-4 py-2 text-blue-600 font-semibold hover:text-blue-700 transition-colors">
               Sign In
             </button>
-            <button className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-lg">
+            {/* <button className="px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-lg">
               Try Free
-            </button>
+            </button> */}
           </div>
         </div>
       </div>
