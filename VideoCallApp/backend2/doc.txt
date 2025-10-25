@@ -1,0 +1,97 @@
+Room: {
+  id: 'room123',
+  peers: {
+    'socketA': {
+      id: 'socketA',
+      sendTransport: { id: 'transport123', ... },
+      recvTransports: Map(0),
+      producers: Map(2) { ... },
+      consumers: Map(0)
+    },
+    'socketB': {
+      id: 'socketB',
+      sendTransport: { id: 'transport999', ... }, // if he started his camera
+      recvTransports: Map(1) {
+        'socketA' => { id: 'recv-transport456', ... }
+      },
+      producers: Map(0),
+      consumers: Map(2) {
+        'consumerA-audio' => { id: '...', kind: 'audio' },
+        'consumerA-video' => { id: '...', kind: 'video' }
+      }
+    }
+  }
+}
+
+Ok this is documentation of understanding of webrtc group video call using mediasoup library
+
+1. What is MediaSoup?
+
+MediaSoup is a Node.js library for building real-time video/audio applications (like Zoom or Google Meet) using WebRTC.
+
+It is not a full video conferencing solution — it’s a media server library. You use it to build your own system for sending and receiving streams.
+
+It handles:
+
+Low-latency streaming
+
+Media routing (sending one user’s video/audio to many users efficiently)
+
+Multiple codecs (H264, VP8, Opus, etc.)
+
+Scaling to multiple participants without overloading clients
+
+2. Core Concepts
+Router
+
+Think of a router as the “brain” of your room.
+
+It knows all the producers (senders) and consumers (receivers) in the room.
+
+Each room has one router.
+
+Transport
+
+Transport = a network connection over which media flows.
+
+There are two types of transports:
+
+SendTransport: For sending your local tracks (video/audio)
+
+RecvTransport: For receiving tracks from other users
+
+Each transport handles ICE, DTLS, and RTP internally.
+
+Producer
+
+A track you want to send over a SendTransport.
+
+Example: your webcam video or microphone audio.
+
+Consumer
+
+A track you receive from someone else’s Producer via a RecvTransport.
+
+Example: the video track of another participant in the room.
+
+3. How MediaSoup Works (High-Level Flow)
+
+User connects to server via Socket.io (signaling channel).
+
+Server creates a Router for the room if it doesn’t exist.
+
+Client requests a SendTransport → server creates it → sends ICE/DTLS info → client connects.
+
+Client produces tracks (video/audio) → server stores producers in Router.
+
+Server notifies other clients about the new producer via newProducer.
+
+Other clients create RecvTransport → consume the new producer → display video/audio.
+
+4. Why MediaSoup?
+
+Handles multiple users efficiently (doesn’t require all clients to peer-to-peer, which can be heavy).
+
+Gives full control over how media flows.
+
+Supports custom logic, like AI translation or effects, before sending media to other users.

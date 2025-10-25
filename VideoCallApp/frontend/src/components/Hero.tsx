@@ -33,16 +33,16 @@ const Hero: React.FC = () => {
   };
 
   return (
-    <section className="py-12 px-4">
+    <section className="py-12 px-4 bg-gray-900 ">
       <div className="container mx-auto max-w-6xl">
         <div className="grid md:grid-cols-2 gap-12 items-center">
           <div>
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 leading-tight">
+            <h1 className="text-4xl md:text-5xl font-bold text-gray-300 leading-tight">
               Connect with <span className="text-blue-600">Friends</span>
               <br />
               Like Never Before
             </h1>
-            <p className="text-xl text-gray-600 mt-6 mb-8 leading-relaxed">
+            <p className="text-xl text-gray-400 mt-6 mb-8 leading-relaxed">
               Crystal-clear video calls, instant friend connections, and
               seamless communication. Experience the future of video chatting
               with our intuitive platform.

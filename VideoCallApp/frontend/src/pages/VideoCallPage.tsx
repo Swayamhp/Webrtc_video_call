@@ -1081,17 +1081,11 @@ useEffect(() => {
 
 
   return (
-    <div className="min-h-screen bg-gray-900">
+    <div className="min-h-screen  bg-gray-900">
       <div className="container mx-auto px-4 py-4">
         {/* Header */}
         <div className="flex justify-between items-center mb-2">
           <div className="flex items-center space-x-4">
-            <div className="w-12 h-12 bg-blue-800 rounded-full mx-auto flex items-center justify-center">
-              <svg className="w-8 h-8" fill="white" viewBox="0 0 20 20">
-                <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v8a2 2 0 01-2 2h-2a2 2 0 01-2-2V6z" />
-              </svg>
-            </div>
-
             <VideoConnectLogo
               width={150}
               height={40}
@@ -1198,7 +1192,7 @@ useEffect(() => {
             </div>
 
             {/* Remote Video */}
-            <div className="relative bg-gray-800  rounded-lg aspect-video flex items-center justify-center remoteContainer z-50">
+            <div className="relative bg-gray-800 md:max-h-[300px]  rounded-lg aspect-video flex items-center justify-center remoteContainer z-50">
               <video
                 id="remoteVideo"
                 ref={remoteVideoRef}

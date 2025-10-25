@@ -2,7 +2,7 @@ import { Mail, Phone, Linkedin } from "lucide-react";
 
 export default function Footer() {
   return (
-    <footer className="text-center py-18 bg-gray-800 text-white">
+    <footer className="text-center py-10 bg-gray-800 text-white">
           <p>© 2025 VideoConnect. All rights reserved.</p>
     
           <div className="flex justify-center gap-6 mt-2">
