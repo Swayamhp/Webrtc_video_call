@@ -1,4 +1,4 @@
-# VideoConnectHP
+# VideoConnect
 
 A real-time video conferencing application supporting **one-to-one peer-to-peer calls** and **group video calls using MediaSoup SFU**.  
 
