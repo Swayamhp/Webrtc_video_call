@@ -19,7 +19,7 @@ export default function Footer() {
               className="flex items-center gap-2 text-blue-400 hover:text-blue-300 transition"
             >
               <Phone size={18} />
-              <span>Call +91 6371400124</span>
+              {/* <span>Call +91 6371400124</span> */}
             </a>
     
             <a

@@ -1092,15 +1092,28 @@ const VideoCallPage: React.FC = () => {
   }, [])
   const handleToggleBackCamera = async () => {
     console.log("clicked back camera");
-    if(backCameraEnabled){
-      handleVideoSharing();
-      setBackCameraEnabled(false);
-    return;};
+ 
     let backStream;
     try {
-      backStream = await navigator.mediaDevices.getUserMedia({
+      if(backCameraEnabled){
+         backStream = await navigator.mediaDevices.getUserMedia({
+         video: { width: 1280, height: 720 },
+      audio: {
+        sampleRate: 48000,   // standard WebRTC sample rate
+        channelCount: 1,     // mono is fine
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
+      }
+      });
+      setBackCameraEnabled(false);
+      }else {
+        backStream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: { exact: "environment" } }
       });
+      setBackCameraEnabled(true);
+      }
+     
     } catch (error) {
       console.log(error);
       return;
