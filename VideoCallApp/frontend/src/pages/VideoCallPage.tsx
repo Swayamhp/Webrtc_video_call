@@ -898,6 +898,7 @@ const VideoCallPage: React.FC = () => {
     };
   };
   const handleVideoSharing = async () => {
+    onclick
     const cameraStream = await navigator.mediaDevices.getUserMedia({
       video: { width: 1280, height: 720 },
       audio: {
@@ -1080,6 +1081,7 @@ const VideoCallPage: React.FC = () => {
     };
   }, [selectLayout]);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [backCameraEnabled,setBackCameraEnabled] = useState(false);
   useEffect(() => {
     function handleResize() {
       setIsMobile(window.innerWidth <= 768)
@@ -1090,6 +1092,10 @@ const VideoCallPage: React.FC = () => {
   }, [])
   const handleToggleBackCamera = async () => {
     console.log("clicked back camera");
+    if(backCameraEnabled){
+      handleVideoSharing();
+      setBackCameraEnabled(false);
+    return;};
     let backStream;
     try {
       backStream = await navigator.mediaDevices.getUserMedia({
@@ -1176,7 +1182,7 @@ const VideoCallPage: React.FC = () => {
 
 
             {/* Local Video */}
-            <div className={`aspect-video bg-gray-800 rounded-lg ${selectLayout == 'remote-user-fullscreen' ? 'absolute inset-0 opacity-0 max-w-[2] max-h-[300px]' : 'relative'}   items-center justify-center localContainer`}>
+            <div className={`aspect-video bg-gray-800 rounded-lg ${selectLayout == 'remote-user-fullscreen' ? 'absolute inset-0 opacity-0 max-h-[300px]' : 'relative'}   items-center justify-center localContainer`}>
               <video
                 id="localVideo"
                 ref={localVideoRef}
@@ -1231,7 +1237,7 @@ const VideoCallPage: React.FC = () => {
                 ref={remoteVideoRef}
                 autoPlay
                 playsInline
-                className="w-full  rounded-lg"
+                className="w-full h-full rounded-lg"
               ></video>
 
               {/* Waiting for remote participant */}
@@ -1313,7 +1319,7 @@ const VideoCallPage: React.FC = () => {
                 </button> :
                 <button
                   title="Camera flip"
-                  onClick={isMobile ? handleToggleBackCamera : handleVideoSharing}
+                  onClick={handleToggleBackCamera}
                   className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-full font-semibold flex items-center gap-2 transition duration-200"
                 >
                   <FiRepeat className="inline" />
