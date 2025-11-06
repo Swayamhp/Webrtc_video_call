@@ -6,17 +6,25 @@ require('dotenv').config();
 
 const app = express();
 const server = http.createServer(app);
+const allowedOrigins = ["http://localhost:5173","https:hpvideocall.netlify.app","https://videoconnect.netlify.app"];
 
 // CORS configuration
 app.use(cors({
-  origin: process.env.CLIENT_URL,
+  origin: function (origin, callback) {
+      if (!origin) return callback(null, true); // allow tools like Postman
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
   credentials: true
 }));
 
 // Socket.io setup
 const io = socketIo(server, {
   cors: {
-    origin: process.env.CLIENT_URL,
+    origin:["http://localhost:5173","https:hpvideocall.netlify.app","https://videoconnect.netlify.app"],
     methods: ["GET", "POST"]
   }
 });

@@ -8,12 +8,13 @@ import {
   FiSettings,
   FiVideo,
   FiVideoOff,
+  FiRepeat,
+  FiMaximize, FiMinimize,
+  FiShare2, FiMic, FiMicOff, FiMonitor,
 } from "react-icons/fi";
 import VideoConnectLogo from "../components/VideoConnectLogo";
 import toast from "react-hot-toast";
 import VideoSettingModal from "../components/VideoSettingModal";
-import { FiMaximize, FiMinimize } from "react-icons/fi";
-import { FiShare2, FiMic, FiMicOff, FiMonitor } from "react-icons/fi";
 import { MdCallEnd } from "react-icons/md";
 import userJoinedSound from "../assets/userJoined.mp3";
 import userLeftSound from "../assets/userLeft.mp3";
@@ -77,7 +78,7 @@ const VideoCallPage: React.FC = () => {
     connectionState: "new",
   });
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-   const [selectLayout, setLayout] = useState("reset-layout");
+  const [selectLayout, setLayout] = useState("reset-layout");
   const [resolution, setResolution] = useState("720p");
   const [micVolume, setMicVolume] = useState(50);
 
@@ -88,46 +89,45 @@ const VideoCallPage: React.FC = () => {
       { urls: "stun:stun.l.google.com:19302" },
       { urls: "stun:stun1.l.google.com:19302" },
       { urls: "stun:stun2.l.google.com:19302" },
-
       // Your Metered.ca TURN servers
-      // {
-      //   urls: "turn:in.relay.metered.ca:80",
-      //   username: "b42da29201cf149bcd63bb44",
-      //   credential: "ATmIroK5eNTrT6Ae",
-      // },
-      // {
-      //   urls: "turn:in.relay.metered.ca:443",
-      //   username: "b42da29201cf149bcd63bb44",
-      //   credential: "ATmIroK5eNTrT6Ae",
-      // },
-      // {
-      //   urls: "turns:in.relay.metered.ca:443?transport=tcp",
-      //   username: "b42da29201cf149bcd63bb44",
-      //   credential: "ATmIroK5eNTrT6Ae",
-      // },
-      // {
-      //   urls: "stun:stun.relay.metered.ca:80",
-      // },
-      // {
-      //   urls: "turn:in.relay.metered.ca:80",
-      //   username: "b42da29201cf149bcd63bb44",
-      //   credential: "ATmIroK5eNTrT6Ae",
-      // },
-      // {
-      //   urls: "turn:in.relay.metered.ca:80?transport=tcp",
-      //   username: "b42da29201cf149bcd63bb44",
-      //   credential: "ATmIroK5eNTrT6Ae",
-      // },
-      // {
-      //   urls: "turn:in.relay.metered.ca:443",
-      //   username: "b42da29201cf149bcd63bb44",
-      //   credential: "ATmIroK5eNTrT6Ae",
-      // },
-      // {
-      //   urls: "turns:in.relay.metered.ca:443?transport=tcp",
-      //   username: "b42da29201cf149bcd63bb44",
-      //   credential: "ATmIroK5eNTrT6Ae",
-      // },
+      {
+        urls: "turn:in.relay.metered.ca:80",
+        username: "b42da29201cf149bcd63bb44",
+        credential: "ATmIroK5eNTrT6Ae",
+      },
+      {
+        urls: "turn:in.relay.metered.ca:443",
+        username: "b42da29201cf149bcd63bb44",
+        credential: "ATmIroK5eNTrT6Ae",
+      },
+      {
+        urls: "turns:in.relay.metered.ca:443?transport=tcp",
+        username: "b42da29201cf149bcd63bb44",
+        credential: "ATmIroK5eNTrT6Ae",
+      },
+      {
+        urls: "stun:stun.relay.metered.ca:80",
+      },
+      {
+        urls: "turn:in.relay.metered.ca:80",
+        username: "b42da29201cf149bcd63bb44",
+        credential: "ATmIroK5eNTrT6Ae",
+      },
+      {
+        urls: "turn:in.relay.metered.ca:80?transport=tcp",
+        username: "b42da29201cf149bcd63bb44",
+        credential: "ATmIroK5eNTrT6Ae",
+      },
+      {
+        urls: "turn:in.relay.metered.ca:443",
+        username: "b42da29201cf149bcd63bb44",
+        credential: "ATmIroK5eNTrT6Ae",
+      },
+      {
+        urls: "turns:in.relay.metered.ca:443?transport=tcp",
+        username: "b42da29201cf149bcd63bb44",
+        credential: "ATmIroK5eNTrT6Ae",
+      },
 
       // Fallback TURN servers
       {
@@ -166,9 +166,7 @@ const VideoCallPage: React.FC = () => {
 
   // Connection monitoring refs
   const statsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const healthCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
-    null
-  );
+  const healthCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastVideoBytesReceivedRef = useRef<number>(0);
   const lastAudioBytesReceivedRef = useRef<number>(0);
   const lastPacketReceivedRef = useRef<number>(Date.now());
@@ -212,8 +210,7 @@ const VideoCallPage: React.FC = () => {
       });
 
       addDebugLog(
-        `🔄 TURN Server Usage: ${
-          turnUsed ? "✅ USING TURN" : "❌ NOT using TURN"
+        `🔄 TURN Server Usage: ${turnUsed ? "✅ USING TURN" : "❌ NOT using TURN"
         }`
       );
       addDebugLog(
@@ -436,11 +433,12 @@ const VideoCallPage: React.FC = () => {
       addDebugLog("🔄 Auto-starting media stream...");
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: 1280, height: 720 },
-        audio: {sampleRate: 48000,   // standard WebRTC sample rate
-    channelCount: 1,     // mono is fine
-    echoCancellation: true,
-    noiseSuppression: true,
-    autoGainControl: true
+        audio: {
+          sampleRate: 48000,   // standard WebRTC sample rate
+          channelCount: 1,     // mono is fine
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
         }
       });
 
@@ -519,7 +517,7 @@ const VideoCallPage: React.FC = () => {
           addDebugLog("✅ TURN server is being used!");
         }
 
-        if (socketRef.current) {
+        if (socketRef.current && event.candidate) {
           socketRef.current.emit("ice-candidate", {
             roomId,
             candidate: event.candidate,
@@ -730,7 +728,6 @@ const VideoCallPage: React.FC = () => {
   // Initialize Socket Connection - AUTO START MEDIA
   useEffect(() => {
     const socketUrl = import.meta.env.VITE_SIGNALING_SERVER_URL;
-    console.log("Socket url is ***************8888", socketUrl);
     const socket = io(socketUrl, {
       transports: ["websocket", "polling"],
       timeout: 10000,
@@ -770,13 +767,13 @@ const VideoCallPage: React.FC = () => {
 
     // WebRTC Signaling Events
     socket.on("user-connected", (remoteUserId: string) => {
-      
+
       addDebugLog(`👤 Remote user connected: ${remoteUserId}`);
       toast.success("Remote user has joined the call!", {
         duration: 5000,
       });
       handleJoin();
-      
+
       setHasRemoteUser(true);
 
       // If we already have media and peer connection, create offer
@@ -784,13 +781,14 @@ const VideoCallPage: React.FC = () => {
         addDebugLog("🤝 Creating offer for new user");
         createOffer();
       }
-      
+
     });
 
     socket.on("user-disconnected", () => {
       addDebugLog("👤 Remote user disconnected");
       toast.error("Remote user has left the call", { duration: 5000 });
       handleLeave();
+      peerConnectionRef.current?.close();
       setHasRemoteUser(false);
     });
 
@@ -904,14 +902,17 @@ const VideoCallPage: React.FC = () => {
       video: { width: 1280, height: 720 },
       audio: {
         sampleRate: 48000,   // standard WebRTC sample rate
-    channelCount: 1,     // mono is fine
-    echoCancellation: true,
-    noiseSuppression: true,
-    autoGainControl: true
+        channelCount: 1,     // mono is fine
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
       }
     });
     const cameraTrack = cameraStream.getVideoTracks()[0];
     if (sender) sender.replaceTrack(cameraTrack);
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = cameraStream;
+    }
   };
   if (isScreenSharing) {
     handleScreenSharing();
@@ -976,7 +977,7 @@ const VideoCallPage: React.FC = () => {
   //       return "bg-gray-500";
   //   }
   // };
-   function handleShare() {
+  function handleShare() {
     if (navigator.share) {
       navigator.share({
         title: "Video Call",
@@ -985,100 +986,133 @@ const VideoCallPage: React.FC = () => {
       });
     }
   }
-// // Track WebRTC stats
-// const statsRef = useRef<{ lastBytesSent?: number; lastTimestamp?: number }>({});
+  // // Track WebRTC stats
+  // const statsRef = useRef<{ lastBytesSent?: number; lastTimestamp?: number }>({});
 
-// useEffect(() => {
-//   const interval = setInterval(async () => {
-//     const pc = peerConnectionRef.current;
-//     if (!pc) return;
+  // useEffect(() => {
+  //   const interval = setInterval(async () => {
+  //     const pc = peerConnectionRef.current;
+  //     if (!pc) return;
 
-//     try {
-//       const stats = await pc.getStats();
-//       stats.forEach(report => {
-//         if (report.type === "outbound-rtp" && report.kind === "audio") {
-//           const bytesSent = report.bytesSent;
-//           const timestamp = report.timestamp;
+  //     try {
+  //       const stats = await pc.getStats();
+  //       stats.forEach(report => {
+  //         if (report.type === "outbound-rtp" && report.kind === "audio") {
+  //           const bytesSent = report.bytesSent;
+  //           const timestamp = report.timestamp;
 
-//           // Store previous values to calculate bitrate
-//           if (!statsRef.current.lastBytesSent) {
-//             statsRef.current.lastBytesSent = bytesSent;
-//             statsRef.current.lastTimestamp = timestamp;
-//             return;
-//           }
+  //           // Store previous values to calculate bitrate
+  //           if (!statsRef.current.lastBytesSent) {
+  //             statsRef.current.lastBytesSent = bytesSent;
+  //             statsRef.current.lastTimestamp = timestamp;
+  //             return;
+  //           }
 
-//           const deltaBytes = bytesSent - statsRef.current.lastBytesSent;
-//           const deltaTime = (timestamp - statsRef.current.lastTimestamp!) / 1000; // ms → sec
+  //           const deltaBytes = bytesSent - statsRef.current.lastBytesSent;
+  //           const deltaTime = (timestamp - statsRef.current.lastTimestamp!) / 1000; // ms → sec
 
-//           const bitrate = (deltaBytes * 8) / deltaTime; // bits per second
-//           const kbps = (bitrate / 1000).toFixed(2); // kbps
+  //           const bitrate = (deltaBytes * 8) / deltaTime; // bits per second
+  //           const kbps = (bitrate / 1000).toFixed(2); // kbps
 
-//           console.log(`Audio bitrate**********8: ${kbps} kbps`);
+  //           console.log(`Audio bitrate**********8: ${kbps} kbps`);
 
-//           statsRef.current.lastBytesSent = bytesSent;
-//           statsRef.current.lastTimestamp = timestamp;
-//         }
-//       });
-//     } catch (error) {
-//       console.error('Error getting WebRTC stats:', error);
-//     }
-//   }, 2000);
+  //           statsRef.current.lastBytesSent = bytesSent;
+  //           statsRef.current.lastTimestamp = timestamp;
+  //         }
+  //       });
+  //     } catch (error) {
+  //       console.error('Error getting WebRTC stats:', error);
+  //     }
+  //   }, 2000);
 
-//   return () => clearInterval(interval);
-// }, []);
-useEffect(() => {
-  const localVideo = document.getElementById("localVideo") as HTMLVideoElement;
-  const remoteVideo = document.getElementById("remoteVideo") as HTMLVideoElement;
-  const remoteVidContainer = document.querySelector(".remoteContainer") as HTMLElement;
-  const localVidContainer = document.querySelector(".localContainer") as HTMLElement;
+  //   return () => clearInterval(interval);
+  // }, []);
+  useEffect(() => {
+    const localVideo = document.getElementById("localVideo") as HTMLVideoElement;
+    const remoteVideo = document.getElementById("remoteVideo") as HTMLVideoElement;
+    const remoteVidContainer = document.querySelector(".remoteContainer") as HTMLElement;
+    const localVidContainer = document.querySelector(".localContainer") as HTMLElement;
 
-  const handleLayout = async () => {
-    try {
-      // Always exit PiP before switching
-      if (document.pictureInPictureElement) {
-        await document.exitPictureInPicture();
+    const handleLayout = async () => {
+      try {
+        // Always exit PiP before switching
+        if (document.pictureInPictureElement) {
+          await document.exitPictureInPicture();
+        }
+
+        // Reset both visibility first
+        remoteVidContainer?.classList.remove('hidden');
+        localVidContainer?.classList.remove("hidden");
+        console.log("Selected layout:", selectLayout);
+
+
+        if (selectLayout === "user-fullscreen") {
+          // Local fullscreen, remote PiP
+          localVideo.className = "w-full h-full ";
+          remoteVidContainer.classList.add("hidden");
+          await remoteVideo.requestPictureInPicture();
+
+        } else if (selectLayout === "remote-user-fullscreen") {
+          // Remote fullscreen, local PiP
+          remoteVideo.className = "w-full h-full ";
+          await localVideo.requestPictureInPicture();
+
+        }
+      } catch (err) {
+        console.error("PiP error:", err);
       }
+    };
 
-      // Reset both visibility first
-      remoteVidContainer?.classList.remove('hidden');
-      localVidContainer?.classList.remove("hidden");
-      console.log("Selected layout:", selectLayout);
-     
-      
-      if (selectLayout === "user-fullscreen") {
-        // Local fullscreen, remote PiP
-        localVideo.className = "w-full h-full ";
-        remoteVidContainer.classList.add("hidden");
-        await remoteVideo.requestPictureInPicture();
+    handleLayout();
 
-      } else if (selectLayout === "remote-user-fullscreen") {
-        // Remote fullscreen, local PiP
-        remoteVideo.className = "w-full h-full ";
-        await localVideo.requestPictureInPicture();
+    // ✅ Reset state when PiP is closed
+    const handlePiPExit = () => {
+      console.log("PiP stopped, resetting layout");
+      setLayout("reset-layout");
+    };
 
-      }
-    } catch (err) {
-      console.error("PiP error:", err);
+    localVideo?.addEventListener("leavepictureinpicture", handlePiPExit);
+    remoteVideo?.addEventListener("leavepictureinpicture", handlePiPExit);
+
+    return () => {
+      localVideo?.removeEventListener("leavepictureinpicture", handlePiPExit);
+      remoteVideo?.removeEventListener("leavepictureinpicture", handlePiPExit);
+    };
+  }, [selectLayout]);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  useEffect(() => {
+    function handleResize() {
+      setIsMobile(window.innerWidth <= 768)
     }
-  };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
 
-  handleLayout();
+  }, [])
+  const handleToggleBackCamera = async () => {
+    console.log("clicked back camera");
+    let backStream;
+    try {
+      backStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { exact: "environment" } }
+      });
+    } catch (error) {
+      console.log(error);
+      return;
+    }
+    const newVideoTrack = backStream.getVideoTracks()[0];
+    const sender = peerConnectionRef.current?.getSenders().find(
+      (s) => s.track && s.track.kind === "video"
+    );
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = backStream;
 
-  // ✅ Reset state when PiP is closed
-  const handlePiPExit = () => {
-    console.log("PiP stopped, resetting layout");
-    setLayout("reset-layout");
-  };
+    }
 
-  localVideo?.addEventListener("leavepictureinpicture", handlePiPExit);
-  remoteVideo?.addEventListener("leavepictureinpicture", handlePiPExit);
+    if (sender) {
+      await sender.replaceTrack(newVideoTrack);
+    }
 
-  return () => {
-    localVideo?.removeEventListener("leavepictureinpicture", handlePiPExit);
-    remoteVideo?.removeEventListener("leavepictureinpicture", handlePiPExit);
-  };
-}, [selectLayout]);
-
+  }
 
   return (
     <div className="min-h-screen  bg-gray-900">
@@ -1098,9 +1132,8 @@ useEffect(() => {
               <FiShare2 className="w-6 h-6 text-gray-400 hover:text-gray-500" />
             </div>
             <div
-              className={`w-3 h-3 rounded-full ${
-                isConnected ? "bg-green-500" : "bg-red-500"
-              }`}
+              className={`w-3 h-3 rounded-full ${isConnected ? "bg-green-500" : "bg-red-500"
+                }`}
             ></div>
             <div className="bg-gray-800 md:px-4 px-2 py-2 rounded-lg flex-shrink-2">
               <span className="text-gray-300 mr-2">Room:</span>
@@ -1139,11 +1172,11 @@ useEffect(() => {
 
         {/* Video Grid */}
         <div className={`bg-black rounded-lg p-4 max-w-7xl flex flex-col gap-4 mx-auto`}>
-          <div className={`${selectLayout=='reset-layout'? 'grid md:grid-cols-2 grid-cols-1':'flex flex-col '} gap-4 ` }>
+          <div className={`${selectLayout == 'reset-layout' ? 'grid md:grid-cols-2 grid-cols-1' : 'flex flex-col '} gap-4 `}>
 
-  
+
             {/* Local Video */}
-            <div className={`aspect-video bg-gray-800 rounded-lg ${selectLayout=='remote-user-fullscreen' ? 'absolute inset-0 opacity-0 max-w-[2] max-h-[300px]':'relative'}   items-center justify-center localContainer`}>
+            <div className={`aspect-video bg-gray-800 rounded-lg ${selectLayout == 'remote-user-fullscreen' ? 'absolute inset-0 opacity-0 max-w-[2] max-h-[300px]' : 'relative'}   items-center justify-center localContainer`}>
               <video
                 id="localVideo"
                 ref={localVideoRef}
@@ -1163,7 +1196,7 @@ useEffect(() => {
               )}
 
               <div className="absolute md:bottom-4 md:left-4 bottom-2 left-2 bg-black bg-opacity-50 px-3 py-1 rounded-full">
-                <span  className="text-white text-sm">
+                <span className="text-white text-sm">
                   You{" "}
                   {isMuted ? (
                     <FiMicOff className="inline" />
@@ -1182,23 +1215,23 @@ useEffect(() => {
                   </div>
                 </div>
               )}
-            <div 
-            onClick={() => selectLayout=="user-fullscreen" ? setLayout("reset-layout") : setLayout("user-fullscreen")}
-            className="absolute top-4 right-4 bg-black bg-opacity-50 p-2 rounded-full cursor-pointer text-white">
-              {selectLayout=="user-fullscreen" ? <FiMinimize /> : <FiMaximize />}
-            </div>
- 
+              <div
+                onClick={() => selectLayout == "user-fullscreen" ? setLayout("reset-layout") : setLayout("user-fullscreen")}
+                className="absolute top-4 right-4 bg-black bg-opacity-50 p-2 rounded-full cursor-pointer text-white">
+                {selectLayout == "user-fullscreen" ? <FiMinimize /> : <FiMaximize />}
+              </div>
+
 
             </div>
 
             {/* Remote Video */}
-            <div className="relative bg-gray-800 md:max-h-[300px]  rounded-lg aspect-video flex items-center justify-center remoteContainer z-50">
+            <div className="relative bg-gray-800 md:h-full rounded-lg aspect-video flex items-center justify-center remoteContainer z-50">
               <video
                 id="remoteVideo"
                 ref={remoteVideoRef}
                 autoPlay
                 playsInline
-                className="w-full max-h-[300px]  rounded-lg"
+                className="w-full  rounded-lg"
               ></video>
 
               {/* Waiting for remote participant */}
@@ -1212,12 +1245,12 @@ useEffect(() => {
                   </div>
                 </div>
               )}
-            <div
-              onClick={() => selectLayout=="remote-user-fullscreen" ? setLayout("reset-layout") : setLayout("remote-user-fullscreen")}
-              className="absolute top-4 right-4 bg-black bg-opacity-50 p-2 rounded-full cursor-pointer text-white"
-            >
-              {selectLayout=="remote-user-fullscreen" ? <FiMinimize /> : <FiMaximize />}
-            </div>
+              <div
+                onClick={() => selectLayout == "remote-user-fullscreen" ? setLayout("reset-layout") : setLayout("remote-user-fullscreen")}
+                className="absolute top-4 right-4 bg-black bg-opacity-50 p-2 rounded-full cursor-pointer text-white"
+              >
+                {selectLayout == "remote-user-fullscreen" ? <FiMinimize /> : <FiMaximize />}
+              </div>
 
               <div className="absolute md:bottom-4 md:left-4 bottom-2 left-2 bg-black bg-opacity-50 px-3 py-1 rounded-full">
                 <span className="text-white text-sm">
@@ -1232,21 +1265,19 @@ useEffect(() => {
                 </div>
               )}
             </div>
-         
-        </div>
+
+          </div>
           {/* Controls */}
           <div className="flex justify-center md:gap-4 gap-3 items-center">
             <button
               onClick={handleToggleMute}
               title="Mute/Unmute"
               disabled={!isCallActive}
-              className={`${
-                isMuted
-                  ? "bg-red-500 hover:bg-red-600"
-                  : "bg-gray-600 hover:bg-gray-700"
-              } ${
-                !isCallActive ? "opacity-50 cursor-not-allowed" : ""
-              } text-white px-6 py-3 rounded-full font-semibold flex items-center gap-2 transition duration-200`}
+              className={`${isMuted
+                ? "bg-red-500 hover:bg-red-600"
+                : "bg-gray-600 hover:bg-gray-700"
+                } ${!isCallActive ? "opacity-50 cursor-not-allowed" : ""
+                } text-white px-6 py-3 rounded-full font-semibold flex items-center gap-2 transition duration-200`}
             >
               {isMuted ? (
                 <FiMicOff className="inline" />
@@ -1259,13 +1290,11 @@ useEffect(() => {
               onClick={handleToggleVideo}
               disabled={!isCallActive}
               title="Video On/Off"
-              className={`${
-                isVideoOff
-                  ? "bg-red-500 hover:bg-red-600"
-                  : "bg-gray-600 hover:bg-gray-700"
-              } ${
-                !isCallActive ? "opacity-50 cursor-not-allowed" : ""
-              } text-white px-6 py-3 rounded-full font-semibold flex items-center gap-2 transition duration-200`}
+              className={`${isVideoOff
+                ? "bg-red-500 hover:bg-red-600"
+                : "bg-gray-600 hover:bg-gray-700"
+                } ${!isCallActive ? "opacity-50 cursor-not-allowed" : ""
+                } text-white px-6 py-3 rounded-full font-semibold flex items-center gap-2 transition duration-200`}
             >
               {isVideoOff ? (
                 <FiVideoOff className="inline" />
@@ -1273,14 +1302,25 @@ useEffect(() => {
                 <FiVideo className="inline" />
               )}
             </button>
+            <div>
+              {!isMobile ?
+                <button
+                  title="Share Screen"
+                  onClick={() => setIsScreenSharing(true)}
+                  className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-full font-semibold flex items-center gap-2 transition duration-200"
+                >
+                  <FiMonitor className="inline" />
+                </button> :
+                <button
+                  title="Camera flip"
+                  onClick={isMobile ? handleToggleBackCamera : handleVideoSharing}
+                  className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-full font-semibold flex items-center gap-2 transition duration-200"
+                >
+                  <FiRepeat className="inline" />
+                </button>}
 
-            <button
-              title="Share Screen"
-              onClick={() => setIsScreenSharing(true)}
-              className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-full font-semibold flex items-center gap-2 transition duration-200"
-            >
-              <FiMonitor className="inline" />
-            </button>
+            </div>
+
             <button
               title="End Call"
               onClick={handleEndCall}
@@ -1290,20 +1330,20 @@ useEffect(() => {
             </button>
           </div>
         </div>
-             {isSettingsOpen && (
-                <div className=" absolute bottom-13 right-[36%]">
-                  <VideoSettingModal
-                    isOpen={true}
-                    onClose={() => setIsSettingsOpen(false)}
-                    selectLayout={selectLayout}
-                    setLayout={setLayout}
-                    resolution={resolution}
-                    setResolution={setResolution}
-                    micVolume={micVolume}
-                    setMicVolume={setMicVolume}
-                  />
-                </div>
-              )}
+        {isSettingsOpen && (
+          <div className=" absolute bottom-13 right-[36%]">
+            <VideoSettingModal
+              isOpen={true}
+              onClose={() => setIsSettingsOpen(false)}
+              selectLayout={selectLayout}
+              setLayout={setLayout}
+              resolution={resolution}
+              setResolution={setResolution}
+              micVolume={micVolume}
+              setMicVolume={setMicVolume}
+            />
+          </div>
+        )}
         {/* Status Info */}
         <div className="max-w-6xl mx-auto mt-6">
           <div className="bg-gray-800 rounded-lg p-4">
@@ -1313,9 +1353,8 @@ useEffect(() => {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-white">
               <div className="flex items-center gap-2">
                 <div
-                  className={`w-3 h-3 rounded-full ${
-                    isConnected ? "bg-green-500" : "bg-red-500"
-                  }`}
+                  className={`w-3 h-3 rounded-full ${isConnected ? "bg-green-500" : "bg-red-500"
+                    }`}
                 ></div>
                 <span>
                   Signaling: {isConnected ? "Connected" : "Disconnected"}
@@ -1323,17 +1362,15 @@ useEffect(() => {
               </div>
               <div className="flex items-center gap-2">
                 <div
-                  className={`w-3 h-3 rounded-full ${
-                    hasRemoteUser ? "bg-green-500" : "bg-yellow-500"
-                  }`}
+                  className={`w-3 h-3 rounded-full ${hasRemoteUser ? "bg-green-500" : "bg-yellow-500"
+                    }`}
                 ></div>
                 <span>Remote: {hasRemoteUser ? "Connected" : "Waiting"}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div
-                  className={`w-3 h-3 rounded-full ${
-                    isCallActive ? "bg-green-500" : "bg-gray-500"
-                  }`}
+                  className={`w-3 h-3 rounded-full ${isCallActive ? "bg-green-500" : "bg-gray-500"
+                    }`}
                 ></div>
                 <span>Media: {isCallActive ? "Active" : "Starting..."}</span>
               </div>
@@ -1349,37 +1386,37 @@ useEffect(() => {
           </div>
         </div>
       </div>
-<footer className="text-center p-4 bg-gray-700 text-white">
-      <p>© 2025 VideoConnect. All rights reserved.</p>
+      <footer className="text-center p-4 bg-gray-700 text-white">
+        <p>© 2025 VideoConnect. All rights reserved.</p>
 
-      <div className="flex justify-center gap-6 mt-2">
-        <a
-          href="mailto:hgouda244@gmail.com"
-          className="flex items-center gap-2 text-blue-400 hover:text-blue-300 transition"
-        >
-          <Mail size={18} />
-          <span>Email</span>
-        </a>
+        <div className="flex justify-center gap-6 mt-2">
+          <a
+            href="mailto:hgouda244@gmail.com"
+            className="flex items-center gap-2 text-blue-400 hover:text-blue-300 transition"
+          >
+            <Mail size={18} />
+            <span>Email</span>
+          </a>
 
-        <a
-          href="tel:6371400124"
-          className="flex items-center gap-2 text-blue-400 hover:text-blue-300 transition"
-        >
-          <Phone size={18} />
-          <span>Call</span>
-        </a>
+          <a
+            href="tel:6371400124"
+            className="flex items-center gap-2 text-blue-400 hover:text-blue-300 transition"
+          >
+            <Phone size={18} />
+            <span>Call</span>
+          </a>
 
-        <a
-          href="https://www.linkedin.com/in/hara-prasad-gouda-9b458a2a9/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-2 text-blue-400 hover:text-blue-300 transition"
-        >
-          <Linkedin size={18} />
-          <span>LinkedIn</span>
-        </a>
-      </div>
-    </footer>
+          <a
+            href="https://www.linkedin.com/in/hara-prasad-gouda-9b458a2a9/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-blue-400 hover:text-blue-300 transition"
+          >
+            <Linkedin size={18} />
+            <span>LinkedIn</span>
+          </a>
+        </div>
+      </footer>
     </div>
   );
 };

@@ -5,7 +5,7 @@ import VideoConnectLogo from "./VideoConnectLogo";
 const Header = () => {
   return (
     <header className="bg-gray-900 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
-      <div className="container mx-auto px-2 py-3">
+      <div className="container mx-auto px-0 py-3">
         <div className="flex justify-between items-center">
             <VideoConnectLogo width={150} height={40} className="opacity-80" />
 
