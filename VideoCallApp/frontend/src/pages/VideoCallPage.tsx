@@ -788,7 +788,6 @@ const VideoCallPage: React.FC = () => {
       addDebugLog("👤 Remote user disconnected");
       toast.error("Remote user has left the call", { duration: 5000 });
       handleLeave();
-      peerConnectionRef.current?.close();
       setHasRemoteUser(false);
     });
 
