@@ -1,11 +1,13 @@
-import { getProducerLists, getRoomByroomId, createRoom, createPeer, removePeer,handleStopScreenShare, notifyProducerclosed, handleDisconnectAll, screenShareProducerId } from "./room.js"
-import { handleSendTransportCamera, handleRcvTransportCamera, handleConnectTransportCamera,handleSendTransportScreen, handleRcvTransportScreen, handleConnectTransportScreen } from "./createHandlers/transportHandler.js"
+import { getProducerLists, getRoomByroomId, createRoom, createPeer, removePeer, handleStopScreenShare, notifyProducerclosed, handleDisconnectAll, screenShareProducerId ,removeProducerFromList} from "./room.js"
+import { handleSendTransportCamera, handleRcvTransportCamera, handleConnectTransportCamera, handleSendTransportScreen, handleRcvTransportScreen, handleConnectTransportScreen } from "./createHandlers/transportHandler.js"
 import { produceHandler } from "./createHandlers/producerHandler.js";
 import { consumeHandler } from "./createHandlers/consumerHandler.js";
 import { toggleHandler } from "./createHandlers/toggleHandler.js";
-
+let roomSize = 0;
 function handleSocket(io, socket) {
   socket.on("join-room", async ({ roomId }, callback) => {
+
+    console.log("Thiss room size",roomSize)
     let room = getRoomByroomId(roomId);
     if (!room?.router) {
       await createRoom(roomId);
@@ -22,20 +24,23 @@ function handleSocket(io, socket) {
       for (const producer of producerList) {
         socket.emit("consume-all-producer", { producer })
       }
-// Send to new user joined the screen share
-if(screenShareProducerId){
-      socket.emit("newScreenShare",{producerId:screenShareProducerId});
+      // Send to new user joined the screen share
+      if (screenShareProducerId) {
+        socket.emit("newScreenShare", { producerId: screenShareProducerId });
 
-}
-    
+      }
+
       callback({ roomId, rtpCapabilities: router.rtpCapabilities });
       socket.on("disconnect", () => {
+
         console.log("disconnected soket id", socket.id);
         notifyProducerclosed(roomId, socket);
         handleDisconnectAll(roomId, socket.id);
         // cleanObjectAfterDisconnect(socket.id,roomId);
         removePeer(roomId, socket.id);
         //clear the object from consumers that are not active
+        //remove the producerList 
+        removeProducerFromList(socket.id);
       })
     } catch (error) {
       console.log(error);
@@ -54,7 +59,7 @@ if(screenShareProducerId){
   toggleHandler(socket);
   handleStopScreenShare(socket);
 
-  
+
 
 }
 export { handleSocket };

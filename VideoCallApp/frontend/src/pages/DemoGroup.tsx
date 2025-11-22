@@ -15,7 +15,6 @@ const GroupVideoCall = () => {
   const localMediaStreamRef = useRef<MediaStream | null>(null);
   const videoContainerRef = useRef<HTMLDivElement | null>(null);
   const hasConnected = useRef(false);
-  const [videoStream, setVideoStream] = useState<{ id: string; stream: MediaStream }[]>([])
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
   const [producerId, setProducerId] = useState(null);
@@ -23,6 +22,7 @@ const GroupVideoCall = () => {
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [isShareScreenStarted, setScreenShareStarted] = useState(false);
   let remoteScreenShareStream = useRef<MediaStream>(null);
+  const [clientCount,setClientCount] = useState(0);
 
 
 
@@ -51,6 +51,7 @@ const GroupVideoCall = () => {
       if (!device.loaded) {
         await device.load({ routerRtpCapabilities: data.rtpCapabilities });
         deviceRef.current = device;
+        console.log("This is rtp",deviceRef.current.rtpCapabilities)
         console.log("can produce audio ", device.canProduce("video"))
         console.log("can produce audio ", device.canProduce("audio"))
       }
@@ -104,6 +105,9 @@ const GroupVideoCall = () => {
           }
         }
       })
+      // socketRef.current.on("consume-all-producer",()=>{
+      //   setClientCount(count=>count+1);
+      // })
     }
   }, [])
 
@@ -125,6 +129,7 @@ const GroupVideoCall = () => {
         await reciveTransportCamera(currentRoomId, producer.producerId);
       }
       reciveTransportFun();
+
     })
 
   }, [hasConnected])
@@ -139,6 +144,7 @@ const GroupVideoCall = () => {
           console.log("The video element ", videoEle);
           videoEle.remove();
           console.log("The video got deleted");
+          // setClientCount(cnt=>cnt-1);
         }
 
       }
@@ -160,6 +166,7 @@ const GroupVideoCall = () => {
 
     socketRef.current?.on("newProducer", async ({ producerId, producerSocketId, kind }) => {
       console.log("This is producerid,socketid,kind", producerId, producerSocketId, kind);
+
       await reciveTransportCamera(currentRoomId, producerId);
     })
 
@@ -218,7 +225,7 @@ const GroupVideoCall = () => {
           const stream = new MediaStream();
           stream.addTrack(consumer.track);
 
-          setVideoStream((prev) => [...prev, { id: producerId, stream }])
+          
           remoteScreenShareStream.current = stream;
           setIsScreenSharing(true);
           // if(localScreeSharingRef.current){
@@ -272,7 +279,7 @@ const GroupVideoCall = () => {
   async function reciveTransportCamera(currentRoomId: any, producerId: any) {
     return new Promise((resolve) => {
       socketRef.current?.emit("createRcvTransportCamera", { roomId: currentRoomId }, (data: any) => {
-        console.log("getting data************", data)
+        console.log("This data",data);
         const transport = deviceRef.current?.createRecvTransport(data)
         //connect transport 
         transport?.on("connectionstatechange", (state) => {
@@ -280,12 +287,14 @@ const GroupVideoCall = () => {
         })
 
         transport?.on("connect", ({ dtlsParameters }, callback, errback) => {
+          console.log("Ready for reciving camera",dtlsParameters);
           socketRef.current?.emit("connectTransportCamera", { roomId: currentRoomId, transportId: transport.id, dtlsParameters, direction: "consume" }, (response: any) => {
             if (response.error) return errback(response.error);
             callback();
           })
 
         })
+        console.log('After reciving transport********',currentRoomId,producerId,deviceRef.current?.rtpCapabilities,transport?.id)
         socketRef.current?.emit("consume-camera", {
           roomId: currentRoomId,
           producerId,
@@ -314,12 +323,11 @@ const GroupVideoCall = () => {
           const stream = new MediaStream();
           stream.addTrack(consumer.track);
 
-          setVideoStream((prev) => [...prev, { id: producerId, stream }])
 
              // Create wrapper with EXACT same classes as local video
         const wrapperVideoEle = document.createElement("div");
         wrapperVideoEle.id = `wrapper-${producerId}`
-        wrapperVideoEle.className = "relative rounded-xl overflow-hidden bg-gray-800 aspect-video group border-2 border-gray-600 hover:border-blue-400 transition-all duration-300 shadow-lg";
+        wrapperVideoEle.className = "relative rounded-xl overflow-hidden bg-gray-800 aspect-video min-h-[200px] group border-2 border-gray-600 hover:border-blue-400 transition-all duration-300 shadow-lg";
 
         // Video element with same styling as local video
         const videoEle = document.createElement("video");
@@ -506,7 +514,11 @@ const GroupVideoCall = () => {
   async function startCameraAudio() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
+        video: {
+    width: { ideal: 1280 },
+    height: { ideal: 720 },
+    frameRate: { ideal: 30 }
+  },
         audio: true
       });
       setLocalMediaStarted(true);
@@ -593,7 +605,6 @@ const GroupVideoCall = () => {
     }
   }
 
-  console.log(videoStream.length)
   function handleVideoToggle() {
     if (!isVideoEnabled && localMediaStreamRef.current) {
       localMediaStreamRef.current.getVideoTracks()[0].enabled = true;
@@ -684,13 +695,13 @@ const GroupVideoCall = () => {
         )}
 
         {/* Participants Videos */}
-        <div className={`flex flex-col ${isScreenSharing ? 'lg:w-1/3' : 'w-full'}`}>
+        <div className={`flex flex-col ${isScreenSharing ? 'lg:w-1/3 max-h-screen' : 'w-full'}`}>
           <div className="flex items-center justify-between mb-2">
             <div className="text-white text-lg font-semibold flex items-center gap-2">
               <div className="flex items-center gap-3">
                 <span>Participants</span>
                 <span className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
-                  {videoStream.length + 1}
+                  {clientCount}
                 </span>
               </div>
             </div>
@@ -702,12 +713,12 @@ const GroupVideoCall = () => {
           <div
             ref={videoContainerRef}
             className={`grid gap-4 flex-1 ${isScreenSharing 
-              ? 'grid-cols-1' 
-              : `grid-cols-1 sm:grid-cols-2 md:grid-cols-2 ${videoStream.length > 1? 'lg:grid-cols-3':'lg:grid-cols-2'} xl:grid-cols-4 2xl:grid-cols-5`
+              ? 'flex flex-col flex-wrap  justify-center overflow-y-scroll ' 
+              : `grid-cols-1 sm:grid-cols-2 md:grid-cols-2 ${clientCount > 1? 'lg:grid-cols-3':'lg:grid-cols-2'} xl:grid-cols-4 2xl:grid-cols-5`
             }`}
           >
             {/* Local Video */}
-            <div className="relative rounded-xl overflow-hidden bg-gray-800 aspect-video group border-2 border-gray-600 hover:border-blue-400 transition-all duration-300 shadow-lg">
+            <div className="relative rounded-xl overflow-hidden bg-gray-800 aspect-video min-h-[200px] group border-2 border-gray-600 hover:border-blue-400 transition-all duration-300 shadow-lg">
               <video
                 ref={localMediaRef}
                 className="w-full h-full object-cover"

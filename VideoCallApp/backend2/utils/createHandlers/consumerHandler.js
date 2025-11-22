@@ -2,11 +2,12 @@ import {getRoomByroomId} from "../room.js"
 
 export function consumeHandler(socket){
    socket.on("consume-camera",async({roomId,producerId,rtpCapabilities,transportId},callback)=>{
-    console.log("This is inside theconsume****************");
+    console.log("This is inside theconsume****************",roomId,producerId,transportId);
     try{ 
       const room = getRoomByroomId(roomId);
    const peer =  room.peers.get(socket.id);
     const transport = peer.recvTransports.get(transportId);
+  
     const consumer = await  transport.consume({
       producerId,
       rtpCapabilities,

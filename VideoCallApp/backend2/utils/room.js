@@ -5,7 +5,7 @@ const room = {
   router: null,
   peers: new Map()
 };
-const producerList = [];
+let producerList = [];
 const mediaCodecs = [
   {
     kind        : "audio",
@@ -117,16 +117,19 @@ function deleteTheDatafromPeeers(roomId,deleteId,type){
 }
 }
 function notifyProducerclosed(roomId,socket){
-  const room = getRoomByroomId(roomId);
+  try{
+const room = getRoomByroomId(roomId);
   const id = socket.id;
   const peers = room.peers;
   const producerId =[...peers.get(id).producers.keys()] ;
-      console.log("This is from producer closed @@@@@@@@@@@@@@@@@@@@@@@@@@@@@",producerId);
 
   for(const [othersocktId,peer] of peers.entries()){
-    console.log("This is from producer closed @@@@@@@@@@@@@@@@@@@@@@@@@@@@@",producerId);
     socket.to(othersocktId).emit("producer-closed",producerId[0]);
   }
+  }catch(error){
+    console.log("Error notifying producers");
+  }
+  
 }
 function handleStopScreenShare(socket){
   socket.on("screenshare-stopped",({roomId,producerId})=>{
@@ -150,6 +153,15 @@ function handleStopScreenShare(socket){
 
   })
 }
+function removeProducerFromList(socketId){
+  try{
+    producerList = producerList.filter((prev)=>prev.producerSocketId != socketId)
 
 
-export {getProducerLists,getRoomByroomId,createRoom,createPeer,handleStopScreenShare,removePeer,notifyProducerclosed,handleDisconnectAll,deleteTheDatafromPeeers,setScreenProducerId};
+  }catch(error){
+    console.log("Error",error);
+  }
+}
+
+
+export {getProducerLists,getRoomByroomId,createRoom,createPeer,handleStopScreenShare,removePeer,notifyProducerclosed,handleDisconnectAll,deleteTheDatafromPeeers,setScreenProducerId,removeProducerFromList};
