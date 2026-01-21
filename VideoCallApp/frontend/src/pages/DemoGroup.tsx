@@ -22,7 +22,6 @@ const GroupVideoCall = () => {
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [isShareScreenStarted, setScreenShareStarted] = useState(false);
   let remoteScreenShareStream = useRef<MediaStream>(null);
-  const [clientCount, setClientCount] = useState(0);
 
 
 
@@ -711,7 +710,7 @@ const GroupVideoCall = () => {
             ref={videoContainerRef}
             className={`grid gap-4 flex-1 ${isScreenSharing
               ? 'flex flex-col flex-wrap  justify-center overflow-y-scroll '
-              : `grid-cols-1 sm:grid-cols-2 md:grid-cols-2 ${clientCount > 1 ? 'lg:grid-cols-3' : 'lg:grid-cols-2'} xl:grid-cols-4 2xl:grid-cols-5`
+              : `grid-cols-1 sm:grid-cols-2 md:grid-cols-2 ${0 > 1 ? 'lg:grid-cols-3' : 'lg:grid-cols-2'} xl:grid-cols-4 2xl:grid-cols-5`
               }`}
           >
             {/* Local Video */}
