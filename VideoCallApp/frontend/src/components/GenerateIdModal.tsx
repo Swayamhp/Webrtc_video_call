@@ -1,57 +1,56 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface GenerateIdModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onJoinRoom: (roomId: string) => void;
+  onJoinRoom: (roomId: string, callType: 'private' | 'group' | undefined) => void;
+  setCallType: (type: 'private' | 'group') => void;
+  callType?: 'private' | 'group';
 }
 
-const GenerateIdModal: React.FC<GenerateIdModalProps> = ({ 
-  isOpen, 
-  onClose, 
-  onJoinRoom 
+const GenerateIdModal: React.FC<GenerateIdModalProps> = ({
+  isOpen,
+  onClose,
+  onJoinRoom,
+  setCallType,
+  callType
 }) => {
   const [activeTab, setActiveTab] = useState<'generate' | 'input'>('generate');
   const [inputRoomId, setInputRoomId] = useState('');
   const [generatedRoomId, setGeneratedRoomId] = useState('');
 
-  // Generate random room ID
   const generateRoomId = () => {
     const newRoomId = Math.random().toString(36).substring(2, 10).toUpperCase();
     setGeneratedRoomId(newRoomId);
     return newRoomId;
   };
 
-  // Handle generate room
   const handleGenerateRoom = () => {
     const roomId = generatedRoomId || generateRoomId();
-    onJoinRoom(roomId);
+    onJoinRoom(roomId, callType);
     resetForm();
+    
   };
 
-  // Handle join with input room ID
   const handleJoinRoom = () => {
+
     if (inputRoomId.trim()) {
-      onJoinRoom(inputRoomId.trim());
+      onJoinRoom(inputRoomId.trim(), callType);
       resetForm();
     }
   };
 
-  // Reset form state
   const resetForm = () => {
     setInputRoomId('');
     setGeneratedRoomId('');
   };
 
-  // Close modal and reset
   const handleClose = () => {
     resetForm();
     onClose();
   };
 
-  // Generate initial room ID when modal opens
-  React.useEffect(() => {
+  useEffect(() => {
     if (isOpen && activeTab === 'generate' && !generatedRoomId) {
       generateRoomId();
     }
@@ -61,22 +60,34 @@ const GenerateIdModal: React.FC<GenerateIdModalProps> = ({
 
   return (
     <div className="fixed inset-0 backdrop-blur-3xl bg-opacity-50 flex items-center justify-center z-50 ">
-      <div className="bg-white rounded-lg p-6 w-[400px] p-5">
-        {/* Header */}
+      <div className="bg-white rounded-lg p-6 w-[400px]">
+        
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold text-gray-800">Join Video Call</h2>
-          <button
-            onClick={handleClose}
-            className="text-gray-500 hover:text-gray-700 text-2xl"
-          >
+          <button onClick={handleClose} className="text-gray-500 hover:text-gray-700 text-2xl">
             &times;
           </button>
         </div>
 
-        {/* Tab Navigation */}
+        {/* Call Type */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-1 text-gray-700">
+            Call Type
+          </label>
+          <select
+            value={callType}
+            onChange={(e) => setCallType(e.target.value as 'private' | 'group')}
+            className="w-full border px-3 py-2 rounded-md bg-white"
+          >
+            <option value="private">Private (1 to 1)</option>
+            <option value="group">Group (Multi User)</option>
+          </select>
+        </div>
+
+        {/* Tabs */}
         <div className="flex border-b border-gray-200 mb-4">
           <button
-            className={`flex-1 py-2 px-4 text-center font-medium ${
+            className={`flex-1 py-2 text-center font-medium ${
               activeTab === 'generate'
                 ? 'text-blue-600 border-b-2 border-blue-600'
                 : 'text-gray-500 hover:text-gray-700'
@@ -86,7 +97,7 @@ const GenerateIdModal: React.FC<GenerateIdModalProps> = ({
             Create Room
           </button>
           <button
-            className={`flex-1 py-2 px-4 text-center font-medium ${
+            className={`flex-1 py-2 text-center font-medium ${
               activeTab === 'input'
                 ? 'text-blue-600 border-b-2 border-blue-600'
                 : 'text-gray-500 hover:text-gray-700'
@@ -97,44 +108,26 @@ const GenerateIdModal: React.FC<GenerateIdModalProps> = ({
           </button>
         </div>
 
-        {/* Generate Room Tab */}
+        {/* Generate Tab */}
         {activeTab === 'generate' && (
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Room ID
-              </label>
-              <div className="flex space-x-2">
-                <input
-                  type="text"
-                  value={generatedRoomId}
-                  readOnly
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700"
-                  placeholder="Click generate to create room ID"
-                />
-                <button
-                  onClick={generateRoomId}
-                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
-                >
-                  Refresh
-                </button>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Share this ID with others to join your room
-              </p>
-            </div>
-            
-            <div className="flex space-x-3 pt-2">
+            <input
+              type="text"
+              value={generatedRoomId}
+              readOnly
+              className="w-full px-3 py-2 border rounded-md bg-gray-50"
+            />
+            <div className="flex space-x-2">
               <button
-                onClick={handleClose}
-                className="flex-1 px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition-colors"
+                onClick={generateRoomId}
+                className="flex-1 px-4 py-2 bg-gray-200 rounded-md"
               >
-                Cancel
+                Refresh
               </button>
               <button
                 onClick={handleGenerateRoom}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                 disabled={!generatedRoomId}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md"
               >
                 Create Room
               </button>
@@ -142,40 +135,27 @@ const GenerateIdModal: React.FC<GenerateIdModalProps> = ({
           </div>
         )}
 
-        {/* Input Room ID Tab */}
+        {/* Input Tab */}
         {activeTab === 'input' && (
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Enter Room ID
-              </label>
-              <input
-                type="text"
-                value={inputRoomId}
-                onChange={(e) => setInputRoomId(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Enter room ID provided by host"
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    handleJoinRoom();
-                  }
-                }}
-              />
-            </div>
-            
-            <div className="flex space-x-3 pt-2">
-              <button
-                onClick={handleClose}
-                className="flex-1 px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition-colors"
-              >
+            <input
+              type="text"
+              value={inputRoomId}
+              onChange={(e) => setInputRoomId(e.target.value)}
+              className="w-full px-3 py-2 border rounded-md"
+              placeholder="Enter Room ID"
+            />
+
+            <div className="flex space-x-2">
+              <button onClick={handleClose} className="flex-1 px-4 py-2 bg-gray-200 rounded-md">
                 Cancel
               </button>
               <button
                 onClick={handleJoinRoom}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                 disabled={!inputRoomId.trim()}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md"
               >
-                Join Room
+                Join
               </button>
             </div>
           </div>

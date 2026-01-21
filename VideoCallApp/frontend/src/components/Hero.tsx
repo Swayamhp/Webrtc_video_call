@@ -10,6 +10,7 @@ const Hero: React.FC = () => {
   const [imageIndex,setImageIndex] = useState(0);
   const [videoModal, setVideoModal] = useState(false);
   const [currentRoomId, setCurrentRoomId] = useState('');
+  const [callType, setCallType] = useState<'private' | 'group'>('private');
 
   useEffect( ()=>{
     const timeInterval = setInterval(()=>{
@@ -23,9 +24,11 @@ const Hero: React.FC = () => {
     setCurrentRoomId(roomId);
     setVideoModal(false);
     // Here you can add navigation logic to the video call room
-    console.log(`Joining room: ${roomId}`);
     // Example: navigate to video call page with room ID
+    if(callType === 'private')
     window.location.href = `/video-call/${roomId}`;
+    else if(callType === 'group')
+    window.location.href = `/group-video-call/${roomId}`;
   };
 
   const handleStartCall = () => {
@@ -128,6 +131,8 @@ const Hero: React.FC = () => {
         isOpen={videoModal} 
         onClose={() => setVideoModal(false)}
         onJoinRoom={handleJoinRoom}
+        setCallType={setCallType}
+        callType={callType}
       />
     </section>
   );

@@ -22,7 +22,7 @@ const GroupVideoCall = () => {
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [isShareScreenStarted, setScreenShareStarted] = useState(false);
   let remoteScreenShareStream = useRef<MediaStream>(null);
-  const [clientCount,setClientCount] = useState(0);
+  const [clientCount, setClientCount] = useState(0);
 
 
 
@@ -51,7 +51,7 @@ const GroupVideoCall = () => {
       if (!device.loaded) {
         await device.load({ routerRtpCapabilities: data.rtpCapabilities });
         deviceRef.current = device;
-        console.log("This is rtp",deviceRef.current.rtpCapabilities)
+        console.log("This is rtp", deviceRef.current.rtpCapabilities)
         console.log("can produce audio ", device.canProduce("video"))
         console.log("can produce audio ", device.canProduce("audio"))
       }
@@ -225,7 +225,7 @@ const GroupVideoCall = () => {
           const stream = new MediaStream();
           stream.addTrack(consumer.track);
 
-          
+
           remoteScreenShareStream.current = stream;
           setIsScreenSharing(true);
           // if(localScreeSharingRef.current){
@@ -279,7 +279,7 @@ const GroupVideoCall = () => {
   async function reciveTransportCamera(currentRoomId: any, producerId: any) {
     return new Promise((resolve) => {
       socketRef.current?.emit("createRcvTransportCamera", { roomId: currentRoomId }, (data: any) => {
-        console.log("This data",data);
+        console.log("This data", data);
         const transport = deviceRef.current?.createRecvTransport(data)
         //connect transport 
         transport?.on("connectionstatechange", (state) => {
@@ -287,14 +287,14 @@ const GroupVideoCall = () => {
         })
 
         transport?.on("connect", ({ dtlsParameters }, callback, errback) => {
-          console.log("Ready for reciving camera",dtlsParameters);
+          console.log("Ready for reciving camera", dtlsParameters);
           socketRef.current?.emit("connectTransportCamera", { roomId: currentRoomId, transportId: transport.id, dtlsParameters, direction: "consume" }, (response: any) => {
             if (response.error) return errback(response.error);
             callback();
           })
 
         })
-        console.log('After reciving transport********',currentRoomId,producerId,deviceRef.current?.rtpCapabilities,transport?.id)
+        console.log('After reciving transport********', currentRoomId, producerId, deviceRef.current?.rtpCapabilities, transport?.id)
         socketRef.current?.emit("consume-camera", {
           roomId: currentRoomId,
           producerId,
@@ -324,43 +324,43 @@ const GroupVideoCall = () => {
           stream.addTrack(consumer.track);
 
 
-             // Create wrapper with EXACT same classes as local video
-        const wrapperVideoEle = document.createElement("div");
-        wrapperVideoEle.id = `wrapper-${producerId}`
-        wrapperVideoEle.className = "relative rounded-xl overflow-hidden bg-gray-800 aspect-video min-h-[200px] group border-2 border-gray-600 hover:border-blue-400 transition-all duration-300 shadow-lg";
+          // Create wrapper with EXACT same classes as local video
+          const wrapperVideoEle = document.createElement("div");
+          wrapperVideoEle.id = `wrapper-${producerId}`
+          wrapperVideoEle.className = "relative rounded-xl overflow-hidden bg-gray-800 aspect-video min-h-[200px] group border-2 border-gray-600 hover:border-blue-400 transition-all duration-300 shadow-lg";
 
-        // Video element with same styling as local video
-        const videoEle = document.createElement("video");
-        videoEle.id = `producer-${producerId}`
-        videoEle.srcObject = stream;
-        videoEle.autoplay = true;
-        videoEle.playsInline = true;
-        videoEle.muted = true; // Changed to false to hear remote audio
-        videoEle.className = "w-full h-full object-cover rounded-xl";
+          // Video element with same styling as local video
+          const videoEle = document.createElement("video");
+          videoEle.id = `producer-${producerId}`
+          videoEle.srcObject = stream;
+          videoEle.autoplay = true;
+          videoEle.playsInline = true;
+          videoEle.muted = true; // Changed to false to hear remote audio
+          videoEle.className = "w-full h-full object-cover rounded-xl";
 
-        // User label - exactly like local but with different text
-        const userLabelEle = document.createElement("div");
-        userLabelEle.className = "absolute bottom-3 left-3 text-white text-sm bg-black/80 backdrop-blur-sm px-3 py-1.5 rounded-full flex items-center gap-2";
-        userLabelEle.innerHTML = `
+          // User label - exactly like local but with different text
+          const userLabelEle = document.createElement("div");
+          userLabelEle.className = "absolute bottom-3 left-3 text-white text-sm bg-black/80 backdrop-blur-sm px-3 py-1.5 rounded-full flex items-center gap-2";
+          userLabelEle.innerHTML = `
           <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
           <span class="font-medium">User ${producerId.slice(-4)}</span>
         `;
 
-        // Audio indicator - initially showing mic on (same as local)
-        const audioIndicatorEle = document.createElement("div");
-        audioIndicatorEle.className = "absolute top-3 right-3 bg-black/80 backdrop-blur-sm rounded-full p-2 shadow-lg mic-icon";
-        audioIndicatorEle.innerHTML = `
+          // Audio indicator - initially showing mic on (same as local)
+          const audioIndicatorEle = document.createElement("div");
+          audioIndicatorEle.className = "absolute top-3 right-3 bg-black/80 backdrop-blur-sm rounded-full p-2 shadow-lg mic-icon";
+          audioIndicatorEle.innerHTML = `
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="text-white">
             <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
             <path d="M19 9a1 1 0 0 1 1 1a8 8 0 0 1 -6.999 7.938l-.001 2.062h3a1 1 0 0 1 0 2h-8a1 1 0 0 1 0 -2h3v-2.062a8 8 0 0 1 -7 -7.938a1 1 0 1 1 2 0a6 6 0 0 0 12 0a1 1 0 0 1 1 -1m-7 -8a4 4 0 0 1 4 4v5a4 4 0 1 1 -8 0v-5a4 4 0 0 1 4 -4" />
           </svg>
         `;
 
-        // Video off overlay (hidden by default) - same as local
-        const videoOverLayerEle = document.createElement("div");
-        videoOverLayerEle.id = `overlayer-${producerId}`
-        videoOverLayerEle.className = "absolute inset-0 bg-gray-900/90 flex items-center justify-center hidden rounded-xl";
-        videoOverLayerEle.innerHTML = `
+          // Video off overlay (hidden by default) - same as local
+          const videoOverLayerEle = document.createElement("div");
+          videoOverLayerEle.id = `overlayer-${producerId}`
+          videoOverLayerEle.className = "absolute inset-0 bg-gray-900/90 flex items-center justify-center hidden rounded-xl";
+          videoOverLayerEle.innerHTML = `
           <div class="text-center">
             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="text-white opacity-70 mx-auto mb-2" viewBox="0 0 16 16">
               <path fill-rule="evenodd" d="M10.961 12.365a2 2 0 0 0 .522-1.103l3.11 1.382A1 1 0 0 0 16 11.731V4.269a1 1 0 0 0-1.406-.913l-3.111 1.382A2 2 0 0 0 9.5 3H4.272l.714 1H9.5a1 1 0 0 1 1 1v6a1 1 0 0 1-.144.518zM1.428 4.18A1 1 0 0 0 1 5v6a1 1 0 0 0 1 1h5.014l.714 1H2a2 2 0 0 1-2-2V5c0-.675.334-1.272.847-1.634zM15 11.73l-3.5-1.555v-4.35L15 4.269zm-4.407 3.56-10-14 .814-.58 10 14z"/>
@@ -369,16 +369,16 @@ const GroupVideoCall = () => {
           </div>
         `;
 
-        // Hover effect gradient - same as local
-        const hoverGradientEle = document.createElement("div");
-        hoverGradientEle.className = "absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl";
+          // Hover effect gradient - same as local
+          const hoverGradientEle = document.createElement("div");
+          hoverGradientEle.className = "absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl";
 
-        // Append all elements in same structure as local
-        wrapperVideoEle.appendChild(videoEle);
-        wrapperVideoEle.appendChild(userLabelEle);
-        wrapperVideoEle.appendChild(audioIndicatorEle);
-        wrapperVideoEle.appendChild(videoOverLayerEle);
-        wrapperVideoEle.appendChild(hoverGradientEle);
+          // Append all elements in same structure as local
+          wrapperVideoEle.appendChild(videoEle);
+          wrapperVideoEle.appendChild(userLabelEle);
+          wrapperVideoEle.appendChild(audioIndicatorEle);
+          wrapperVideoEle.appendChild(videoOverLayerEle);
+          wrapperVideoEle.appendChild(hoverGradientEle);
 
 
           if (videoContainerRef.current) {
@@ -515,10 +515,10 @@ const GroupVideoCall = () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-    width: { ideal: 1280 },
-    height: { ideal: 720 },
-    frameRate: { ideal: 30 }
-  },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          frameRate: { ideal: 30 }
+        },
         audio: true
       });
       setLocalMediaStarted(true);
@@ -630,11 +630,11 @@ const GroupVideoCall = () => {
     setIsAudioEnabled(!isAudioEnabled);
   }
 
-  function handleFullScreen(){
+  function handleFullScreen() {
     const videoContEle = videoContainerRef.current;
-    if(!document.fullscreenElement){
-      videoContEle?.requestFullscreen().catch((err)=>console.log(err.message))
-    }else {
+    if (!document.fullscreenElement) {
+      videoContEle?.requestFullscreen().catch((err) => console.log(err.message))
+    } else {
       document.exitFullscreen();
     }
 
@@ -700,22 +700,19 @@ const GroupVideoCall = () => {
             <div className="text-white text-lg font-semibold flex items-center gap-2">
               <div className="flex items-center gap-3">
                 <span>Participants</span>
-                <span className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
-                  {clientCount}
-                </span>
               </div>
             </div>
             <div className="text-sm text-gray-400">
               {!isScreenSharing && 'Grid View'}
             </div>
           </div>
-          
+
           <div
             ref={videoContainerRef}
-            className={`grid gap-4 flex-1 ${isScreenSharing 
-              ? 'flex flex-col flex-wrap  justify-center overflow-y-scroll ' 
-              : `grid-cols-1 sm:grid-cols-2 md:grid-cols-2 ${clientCount > 1? 'lg:grid-cols-3':'lg:grid-cols-2'} xl:grid-cols-4 2xl:grid-cols-5`
-            }`}
+            className={`grid gap-4 flex-1 ${isScreenSharing
+              ? 'flex flex-col flex-wrap  justify-center overflow-y-scroll '
+              : `grid-cols-1 sm:grid-cols-2 md:grid-cols-2 ${clientCount > 1 ? 'lg:grid-cols-3' : 'lg:grid-cols-2'} xl:grid-cols-4 2xl:grid-cols-5`
+              }`}
           >
             {/* Local Video */}
             <div className="relative rounded-xl overflow-hidden bg-gray-800 aspect-video min-h-[200px] group border-2 border-gray-600 hover:border-blue-400 transition-all duration-300 shadow-lg">
@@ -730,26 +727,26 @@ const GroupVideoCall = () => {
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                 <span className="font-medium">You</span>
               </div>
-              
+
               {/* Video off overlay */}
               {!isVideoEnabled && (
                 <div className="absolute inset-0 bg-gray-900/90 flex items-center justify-center">
                   <div className="text-center">
                     <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" className="text-white opacity-70 mx-auto mb-2" viewBox="0 0 16 16">
-                      <path fillRule="evenodd" d="M10.961 12.365a2 2 0 0 0 .522-1.103l3.11 1.382A1 1 0 0 0 16 11.731V4.269a1 1 0 0 0-1.406-.913l-3.111 1.382A2 2 0 0 0 9.5 3H4.272l.714 1H9.5a1 1 0 0 1 1 1v6a1 1 0 0 1-.144.518zM1.428 4.18A1 1 0 0 0 1 5v6a1 1 0 0 0 1 1h5.014l.714 1H2a2 2 0 0 1-2-2V5c0-.675.334-1.272.847-1.634zM15 11.73l-3.5-1.555v-4.35L15 4.269zm-4.407 3.56-10-14 .814-.58 10 14z"/>
+                      <path fillRule="evenodd" d="M10.961 12.365a2 2 0 0 0 .522-1.103l3.11 1.382A1 1 0 0 0 16 11.731V4.269a1 1 0 0 0-1.406-.913l-3.111 1.382A2 2 0 0 0 9.5 3H4.272l.714 1H9.5a1 1 0 0 1 1 1v6a1 1 0 0 1-.144.518zM1.428 4.18A1 1 0 0 0 1 5v6a1 1 0 0 0 1 1h5.014l.714 1H2a2 2 0 0 1-2-2V5c0-.675.334-1.272.847-1.634zM15 11.73l-3.5-1.555v-4.35L15 4.269zm-4.407 3.56-10-14 .814-.58 10 14z" />
                     </svg>
                     <div className="text-white text-sm font-medium">Camera Off</div>
                   </div>
                 </div>
               )}
-              
+
               {/* Audio indicator */}
               {!isAudioEnabled && (
                 <div className="absolute top-3 right-3 bg-red-500/90 backdrop-blur-sm rounded-full p-2 shadow-lg">
                   <FiMicOff className="w-4 h-4 text-white" />
                 </div>
               )}
-              
+
               {/* Hover effect */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             </div>
@@ -764,14 +761,13 @@ const GroupVideoCall = () => {
             {/* Video Toggle */}
             <button
               onClick={handleVideoToggle}
-              className={`flex flex-col items-center  p-3 rounded-2xl transition-all duration-300 transform hover:scale-105 ${
-                isVideoEnabled 
-                  ? "bg-gray-700 hover:bg-gray-600 text-white shadow-lg" 
+              className={`flex flex-col items-center  p-3 rounded-2xl transition-all duration-300 transform hover:scale-105 ${isVideoEnabled
+                  ? "bg-gray-700 hover:bg-gray-600 text-white shadow-lg"
                   : "bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/25"
-              }`}
+                }`}
             >
-              {isVideoEnabled ? 
-                <FiVideo className="w-6 h-6" /> : 
+              {isVideoEnabled ?
+                <FiVideo className="w-6 h-6" /> :
                 <FiVideoOff className="w-6 h-6" />
               }
               <span className="text-xs font-medium mt-1">
@@ -782,14 +778,13 @@ const GroupVideoCall = () => {
             {/* Audio Toggle */}
             <button
               onClick={handleAudioToggle}
-              className={`flex flex-col items-center p-3 rounded-2xl transition-all duration-300 transform hover:scale-105 ${
-                isAudioEnabled 
-                  ? "bg-gray-700 hover:bg-gray-600 text-white shadow-lg" 
+              className={`flex flex-col items-center p-3 rounded-2xl transition-all duration-300 transform hover:scale-105 ${isAudioEnabled
+                  ? "bg-gray-700 hover:bg-gray-600 text-white shadow-lg"
                   : "bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/25"
-              }`}
+                }`}
             >
-              {isAudioEnabled ? 
-                <FiMic className="w-6 h-6" /> : 
+              {isAudioEnabled ?
+                <FiMic className="w-6 h-6" /> :
                 <FiMicOff className="w-6 h-6" />
               }
               <span className="text-xs font-medium mt-1">
@@ -800,11 +795,10 @@ const GroupVideoCall = () => {
             {/* Join/Leave Call - Main Action Button */}
             <button
               onClick={() => setButtonClicked(!buttonClicked)}
-              className={`flex flex-col items-center  px-4 py-4 rounded-2xl transition-all duration-300 transform hover:scale-105 shadow-2xl ${
-                buttonClicked 
-                  ? "bg-red-500 hover:bg-red-600 text-white shadow-red-500/25" 
+              className={`flex flex-col items-center  px-4 py-4 rounded-2xl transition-all duration-300 transform hover:scale-105 shadow-2xl ${buttonClicked
+                  ? "bg-red-500 hover:bg-red-600 text-white shadow-red-500/25"
                   : "bg-green-500 hover:bg-green-600 text-white shadow-green-500/25"
-              } font-semibold`}
+                } font-semibold`}
             >
               <div className="flex items-center gap-2">
                 {buttonClicked ? "Leave Call" : "Join Call"}
@@ -817,11 +811,10 @@ const GroupVideoCall = () => {
             {/* Screen Share */}
             <button
               onClick={startScreenSharing}
-              className={`flex flex-col items-center p-3 rounded-2xl transition-all duration-300 transform hover:scale-105 ${
-                isScreenSharing 
-                  ? "bg-blue-500 hover:bg-blue-600 text-white shadow-lg shadow-blue-500/25" 
+              className={`flex flex-col items-center p-3 rounded-2xl transition-all duration-300 transform hover:scale-105 ${isScreenSharing
+                  ? "bg-blue-500 hover:bg-blue-600 text-white shadow-lg shadow-blue-500/25"
                   : "bg-gray-700 hover:bg-gray-600 text-white shadow-lg"
-              }`}
+                }`}
             >
               <FiMonitor className="w-6 h-6" />
               <span className="text-xs font-medium mt-1">
@@ -831,7 +824,7 @@ const GroupVideoCall = () => {
 
             {/* Fullscreen */}
             <button
-            onClick={handleFullScreen} className="flex flex-col items-center p-3 rounded-2xl bg-gray-700 hover:bg-gray-600 text-white transition-all duration-300 transform hover:scale-105 shadow-lg">
+              onClick={handleFullScreen} className="flex flex-col items-center p-3 rounded-2xl bg-gray-700 hover:bg-gray-600 text-white transition-all duration-300 transform hover:scale-105 shadow-lg">
               <FiMaximize className="w-6 h-6" />
               <span className="text-xs font-medium mt-1">Fullscreen</span>
             </button>

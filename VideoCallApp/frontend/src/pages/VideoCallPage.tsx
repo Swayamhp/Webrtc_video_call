@@ -3,6 +3,10 @@ import React, { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import io, { Socket } from "socket.io-client";
 import { Mail, Phone, Linkedin } from "lucide-react";
+import { SelfieSegmentation } from "@mediapipe/selfie_segmentation";
+import roomBg from "../assets/room.jpg";
+import beachBg from "../assets/beach_background.jpg";
+import forestBg from "../assets/forest_background.jpg";
 import {
   FiCopy,
   FiSettings,
@@ -19,25 +23,8 @@ import { MdCallEnd } from "react-icons/md";
 import userJoinedSound from "../assets/userJoined.mp3";
 import userLeftSound from "../assets/userLeft.mp3";
 
-// Connection monitoring interface
-// interface ConnectionStats {
-//   videoBytesReceived: number;
-//   videoBytesSent: number;
-//   audioBytesReceived: number;
-//   audioBytesSent: number;
-//   packetsLost: number;
-//   lastPacketReceived: number;
-// }
-
 interface WebRtcDebug {
-  pcCreated: boolean;
-  localDescriptionSet: boolean;
-  remoteDescriptionSet: boolean;
-  iceGatheringState: string;
-  iceConnectionState: string;
-  signalingState: string;
   hasRemoteTrack: boolean;
-  connectionState: string;
 }
 
 const VideoCallPage: React.FC = () => {
@@ -59,28 +46,38 @@ const VideoCallPage: React.FC = () => {
   const [hasRemoteUser, setHasRemoteUser] = useState(false);
   const [isCallActive, setIsCallActive] = useState(false);
   const [isMakingOffer, setIsMakingOffer] = useState(false);
-  // const [isIgnoringOffer, setIsIgnoringOffer] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [userId] = useState(
     () => `user-${Math.random().toString(36).substr(2, 9)}`
   );
-
   const [connectionQuality, setConnectionQuality] = useState<string>("unknown");
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [webrtcDebug, setWebrtcDebug] = useState<WebRtcDebug>({
-    pcCreated: false,
-    localDescriptionSet: false,
-    remoteDescriptionSet: false,
-    iceGatheringState: "new",
-    iceConnectionState: "new",
-    signalingState: "stable",
     hasRemoteTrack: false,
-    connectionState: "new",
   });
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [selectLayout, setLayout] = useState("reset-layout");
   const [resolution, setResolution] = useState("720p");
-  const [micVolume, setMicVolume] = useState(50);
+  const [background, setBackground] = useState("none");
+
+  const resolutionConstraints: Record<string, MediaTrackConstraints> = {
+    "360p": { width: 320, height: 240, frameRate: { max: 10 } },
+    "480p": { width: 640, height: 480, frameRate: { max: 15 } },
+    "720p": { width: 1280, height: 720, frameRate: { max: 20 } },
+    "1080p": { width: 1920, height: 1080 },
+    "1440p": { width: 2560, height: 1440 },
+    "2160p": { width: 3840, height: 2160 },
+
+  };
+
+  const resolutionBitrates: Record<string, number> = {
+    "360p": 250000,
+    "480p": 500000,   // 500 Kbps
+    "720p": 1500000,  // 1.5 Mbps
+    "1080p": 3000000, // 3 Mbps
+    "1440p": 6000000, // 6 Mbps
+    "2160p": 12000000 // 12 Mbps
+  };
 
   // Enhanced WebRTC Configuration
   const rtcConfig: RTCConfiguration = {
@@ -172,7 +169,8 @@ const VideoCallPage: React.FC = () => {
   const lastPacketReceivedRef = useRef<number>(Date.now());
   const joinSound = useRef(new Audio(userJoinedSound));
   const leaveSound = useRef(new Audio(userLeftSound));
-
+  const bgImage = new Image();
+  bgImage.src = roomBg;
   // Debug logging function
   const addDebugLog = (message: string) => {
     console.log(`🔍 ${new Date().toLocaleTimeString()}: ${message}`);
@@ -273,14 +271,6 @@ const VideoCallPage: React.FC = () => {
             packetsLost += report.packetsLost || 0;
           }
         }
-
-        if (report.type === "outbound-rtp" && !report.isRemote) {
-          if (report.kind === "video") {
-            // videoBytesSent = report.bytesSent || 0;
-          } else if (report.kind === "audio") {
-            // audioBytesSent = report.bytesSent || 0;
-          }
-        }
       });
 
       // Check if we're receiving data
@@ -308,14 +298,6 @@ const VideoCallPage: React.FC = () => {
       }
 
       setConnectionQuality(quality);
-      // setConnectionStats({
-      //   videoBytesReceived,
-      //   videoBytesSent,
-      //   audioBytesReceived,
-      //   audioBytesSent,
-      //   packetsLost,
-      //   lastPacketReceived: lastPacketReceivedRef.current,
-      // });
 
       lastVideoBytesReceivedRef.current = videoBytesReceived;
       lastAudioBytesReceivedRef.current = audioBytesReceived;
@@ -347,7 +329,6 @@ const VideoCallPage: React.FC = () => {
   };
 
   const handleConnectionFailure = () => {
-    // setConnectionStatus("failed");
     setConnectionQuality("disconnected");
   };
 
@@ -357,8 +338,6 @@ const VideoCallPage: React.FC = () => {
 
     const state = peerConnectionRef.current.connectionState;
     addDebugLog(`🔗 Connection state changed: ${state}`);
-    // setConnectionStatus(state);
-    // setWebrtcDebug(prev => ({ ...prev, connectionState: state }));
 
     switch (state) {
       case "connected":
@@ -393,8 +372,6 @@ const VideoCallPage: React.FC = () => {
 
     const state = peerConnectionRef.current.iceConnectionState;
     addDebugLog(`❄️ ICE connection state: ${state}`);
-    // setIceConnectionStatus(state);
-    setWebrtcDebug((prev) => ({ ...prev, iceConnectionState: state }));
 
     if (state === "connected") {
       addDebugLog("🎉 ICE connected successfully!");
@@ -414,35 +391,94 @@ const VideoCallPage: React.FC = () => {
 
     const state = peerConnectionRef.current.signalingState;
     addDebugLog(`📶 Signaling state: ${state}`);
-    // setSignalingStatus(state);
-    setWebrtcDebug((prev) => ({ ...prev, signalingState: state }));
   };
 
-  // Check if video call is actively transmitting media
-  // const isVideoCallActive = (): boolean => {
-  //   return (
-  //     connectionStatus === "connected" &&
-  //     iceConnectionStatus === "connected" &&
-  //     connectionQuality !== "disconnected"
-  //   );
-  // };
+  //   function startBackgroundBlur(stream: MediaStream, onReady: (track: MediaStreamTrack) => void) {
+  //     const video = document.createElement("video");
+  //     video.srcObject = stream;
+  //     video.play();
+
+  //     const canvas = document.createElement("canvas");
+  //     const ctx = canvas.getContext("2d")!;
+
+  //     const segmentation = new SelfieSegmentation({
+  //       locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`,
+  //     });
+
+  //     segmentation.setOptions({ modelSelection: 1 });
+
+  //     segmentation.onResults((res) => {
+  //   if (!ctx) return;
+
+  //   const vw = video.videoWidth;
+  //   const vh = video.videoHeight;
+  //   canvas.width = vw;
+  //   canvas.height = vh;
+
+  //   // draw blurred scene
+  //   ctx.globalCompositeOperation = "source-over";
+  //   ctx.filter = "blur(12px)";
+  //   ctx.drawImage(video, 0, 0, vw, vh);
+
+  //   // remove person from blurred layer
+  //   ctx.globalCompositeOperation = "destination-out";
+  //   ctx.drawImage(res.segmentationMask, 0, 0, vw, vh);
+
+  //   // draw sharp person back
+  //   ctx.globalCompositeOperation = "destination-over";
+  //   ctx.filter = "none";
+  //   ctx.drawImage(video, 0, 0, vw, vh);
+
+  //   // reset
+  //   ctx.globalCompositeOperation = "source-over";
+  // });
+
+
+
+
+  //     const process = async () => {
+  //       await segmentation.send({ image: video });
+  //       requestAnimationFrame(process);
+  //     };
+  //     process();
+
+  //     const blurredStream = canvas.captureStream(30);
+  //     const blurredTrack = blurredStream.getVideoTracks()[0];
+
+  //     onReady(blurredTrack);
+  //   }
 
   // Initialize Media Stream - AUTO START
   const initializeMedia = async () => {
     try {
-      addDebugLog("🔄 Auto-starting media stream...");
+      addDebugLog(`🔄 Auto-starting media stream with resolution: ${resolution}`);
+      const constraints = resolutionConstraints[resolution] || resolutionConstraints["720p"];
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 1280, height: 720 },
-        audio: {
-          sampleRate: 48000,   // standard WebRTC sample rate
-          channelCount: 1,     // mono is fine
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        }
+        video: constraints,
+        audio: true
       });
 
       localStreamRef.current = stream;
+      //  createPeerConnection()
+
+      // // blur starts here
+      // startBackgroundBlur(stream, (blurredTrack) => {
+      //   // replace local preview
+      //   if (localVideoRef.current) {
+      //     const blurredStream = new MediaStream([blurredTrack, ...stream.getAudioTracks()]);
+      //     localVideoRef.current.srcObject = blurredStream;
+      //   }
+
+      //   // send to peer connection
+      //   const sender = peerConnectionRef.current
+      //     ?.getSenders()
+      //     .find((s) => s.track?.kind === "video");
+      //   if (sender) {
+      //     sender.replaceTrack(blurredTrack);
+      //   } else {
+      //     peerConnectionRef.current?.addTrack(blurredTrack);
+      //   }
+      // });
 
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
@@ -531,7 +567,6 @@ const VideoCallPage: React.FC = () => {
     // ICE gathering state
     peerConnection.onicegatheringstatechange = () => {
       const state = peerConnection.iceGatheringState;
-      setWebrtcDebug((prev) => ({ ...prev, iceGatheringState: state }));
       addDebugLog(`🧊 ICE gathering state: ${state}`);
     };
 
@@ -546,7 +581,6 @@ const VideoCallPage: React.FC = () => {
       await createOffer();
     };
 
-    setWebrtcDebug((prev) => ({ ...prev, pcCreated: true }));
     peerConnectionRef.current = peerConnection;
     addDebugLog("✅ Peer connection created successfully");
     return peerConnection;
@@ -575,7 +609,6 @@ const VideoCallPage: React.FC = () => {
       });
 
       await peerConnectionRef.current.setLocalDescription(offer);
-      setWebrtcDebug((prev) => ({ ...prev, localDescriptionSet: true }));
       addDebugLog("✅ Local description set");
 
       if (socketRef.current) {
@@ -616,15 +649,12 @@ const VideoCallPage: React.FC = () => {
       // Check if we should ignore this offer (race condition prevention)
       if (isMakingOffer || peerConnection.signalingState !== "stable") {
         addDebugLog("🚫 Ignoring offer - already making offer or not stable");
-        // setIsIgnoringOffer(true);
         return;
       }
 
-      // setIsIgnoringOffer(false);
       addDebugLog("🔧 Setting remote description (offer)...");
 
       await peerConnection.setRemoteDescription(offer);
-      setWebrtcDebug((prev) => ({ ...prev, remoteDescriptionSet: true }));
       addDebugLog("✅ Remote description set");
 
       // Process queued ICE candidates after remote description is set
@@ -641,6 +671,7 @@ const VideoCallPage: React.FC = () => {
         socketRef.current.emit("answer", {
           roomId,
           answer: answer,
+          from: userId,
         });
         addDebugLog("✅ Answer sent via socket");
       }
@@ -664,7 +695,6 @@ const VideoCallPage: React.FC = () => {
       if (peerConnection.signalingState === "have-local-offer") {
         addDebugLog("🔧 Setting remote description (answer)...");
         await peerConnection.setRemoteDescription(answer);
-        setWebrtcDebug((prev) => ({ ...prev, remoteDescriptionSet: true }));
         addDebugLog("✅ Remote description set successfully");
 
         processQueuedICECandidates();
@@ -846,19 +876,9 @@ const VideoCallPage: React.FC = () => {
 
     setHasRemoteUser(false);
     setIsMakingOffer(false);
-    // setIsIgnoringOffer(false);
-    // setConnectionStatus("closed");
-    // setIceConnectionStatus("closed");
     setConnectionQuality("disconnected");
     setWebrtcDebug({
-      pcCreated: false,
-      localDescriptionSet: false,
-      remoteDescriptionSet: false,
-      iceGatheringState: "new",
-      iceConnectionState: "new",
-      signalingState: "stable",
       hasRemoteTrack: false,
-      connectionState: "new",
     });
     iceCandidateQueueRef.current = [];
   };
@@ -881,15 +901,15 @@ const VideoCallPage: React.FC = () => {
     navigate("/");
   };
 
-  const sender = peerConnectionRef.current
-    ?.getSenders()
-    .find((s) => s.track?.kind === "video");
 
   const handleScreenSharing = async () => {
     const screenStream = await navigator.mediaDevices.getDisplayMedia({
       video: true,
     });
     const screenTrack = screenStream.getVideoTracks()[0];
+    const sender = peerConnectionRef.current
+      ?.getSenders()
+      .find((s) => s.track?.kind === "video");
     if (sender) sender.replaceTrack(screenTrack);
 
     screenTrack.onended = async () => {
@@ -897,7 +917,6 @@ const VideoCallPage: React.FC = () => {
     };
   };
   const handleVideoSharing = async () => {
-    onclick
     const cameraStream = await navigator.mediaDevices.getUserMedia({
       video: { width: 1280, height: 720 },
       audio: {
@@ -909,15 +928,20 @@ const VideoCallPage: React.FC = () => {
       }
     });
     const cameraTrack = cameraStream.getVideoTracks()[0];
+    const sender = peerConnectionRef.current
+      ?.getSenders()
+      .find((s) => s.track?.kind === "video");
     if (sender) sender.replaceTrack(cameraTrack);
     if (localVideoRef.current) {
       localVideoRef.current.srcObject = cameraStream;
     }
   };
-  if (isScreenSharing) {
-    handleScreenSharing();
-    setIsScreenSharing(false);
-  }
+  useEffect(() => {
+    if (isScreenSharing) {
+      handleScreenSharing();
+      setIsScreenSharing(false);
+    }
+  }, [isScreenSharing]);
 
   const handleToggleMute = () => {
     if (localStreamRef.current) {
@@ -960,23 +984,6 @@ const VideoCallPage: React.FC = () => {
     }
   };
 
-  // Get connection status color
-  // const getStatusColor = (status: string) => {
-  //   switch (status) {
-  //     case "connected":
-  //       return "bg-green-500";
-  //     case "connecting":
-  //       return "bg-yellow-500";
-  //     case "disconnected":
-  //       return "bg-yellow-500";
-  //     case "failed":
-  //       return "bg-red-500";
-  //     case "closed":
-  //       return "bg-gray-500";
-  //     default:
-  //       return "bg-gray-500";
-  //   }
-  // };
   function handleShare() {
     if (navigator.share) {
       navigator.share({
@@ -986,47 +993,6 @@ const VideoCallPage: React.FC = () => {
       });
     }
   }
-  // // Track WebRTC stats
-  // const statsRef = useRef<{ lastBytesSent?: number; lastTimestamp?: number }>({});
-
-  // useEffect(() => {
-  //   const interval = setInterval(async () => {
-  //     const pc = peerConnectionRef.current;
-  //     if (!pc) return;
-
-  //     try {
-  //       const stats = await pc.getStats();
-  //       stats.forEach(report => {
-  //         if (report.type === "outbound-rtp" && report.kind === "audio") {
-  //           const bytesSent = report.bytesSent;
-  //           const timestamp = report.timestamp;
-
-  //           // Store previous values to calculate bitrate
-  //           if (!statsRef.current.lastBytesSent) {
-  //             statsRef.current.lastBytesSent = bytesSent;
-  //             statsRef.current.lastTimestamp = timestamp;
-  //             return;
-  //           }
-
-  //           const deltaBytes = bytesSent - statsRef.current.lastBytesSent;
-  //           const deltaTime = (timestamp - statsRef.current.lastTimestamp!) / 1000; // ms → sec
-
-  //           const bitrate = (deltaBytes * 8) / deltaTime; // bits per second
-  //           const kbps = (bitrate / 1000).toFixed(2); // kbps
-
-  //           console.log(`Audio bitrate**********8: ${kbps} kbps`);
-
-  //           statsRef.current.lastBytesSent = bytesSent;
-  //           statsRef.current.lastTimestamp = timestamp;
-  //         }
-  //       });
-  //     } catch (error) {
-  //       console.error('Error getting WebRTC stats:', error);
-  //     }
-  //   }, 2000);
-
-  //   return () => clearInterval(interval);
-  // }, []);
   useEffect(() => {
     const localVideo = document.getElementById("localVideo") as HTMLVideoElement;
     const remoteVideo = document.getElementById("remoteVideo") as HTMLVideoElement;
@@ -1080,7 +1046,7 @@ const VideoCallPage: React.FC = () => {
     };
   }, [selectLayout]);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-  const [backCameraEnabled,setBackCameraEnabled] = useState(false);
+  const [backCameraEnabled, setBackCameraEnabled] = useState(false);
   useEffect(() => {
     function handleResize() {
       setIsMobile(window.innerWidth <= 768)
@@ -1091,46 +1057,362 @@ const VideoCallPage: React.FC = () => {
   }, [])
   const handleToggleBackCamera = async () => {
     console.log("clicked back camera");
- 
-    let backStream;
+
+    let backStream: MediaStream;
     try {
-      if(backCameraEnabled){
-         backStream = await navigator.mediaDevices.getUserMedia({
-         video: { width: 1280, height: 720 },
-      audio: {
-        sampleRate: 48000,   // standard WebRTC sample rate
-        channelCount: 1,     // mono is fine
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true
-      }
-      });
-      setBackCameraEnabled(false);
-      }else {
+      if (backCameraEnabled) {
         backStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { exact: "environment" } }
-      });
-      setBackCameraEnabled(true);
+          video: { width: 1280, height: 720 },
+          audio: {
+            sampleRate: 48000,   // standard WebRTC sample rate
+            channelCount: 1,     // mono is fine
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          }
+        });
+        setBackCameraEnabled(false);
+      } else {
+        backStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { exact: "environment" } }
+        });
+        setBackCameraEnabled(true);
+
       }
-     
+
+      if (backStream) {
+        const newVideoTrack = backStream.getVideoTracks()[0];
+        const sender = peerConnectionRef.current?.getSenders().find(
+          (s) => s.track && s.track.kind === "video"
+        );
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = backStream;
+        }
+
+        if (sender) {
+          await sender.replaceTrack(newVideoTrack);
+        }
+      }
     } catch (error) {
       console.log(error);
       return;
     }
-    const newVideoTrack = backStream.getVideoTracks()[0];
-    const sender = peerConnectionRef.current?.getSenders().find(
-      (s) => s.track && s.track.kind === "video"
-    );
-    if (localVideoRef.current) {
-      localVideoRef.current.srcObject = backStream;
-
-    }
-
-    if (sender) {
-      await sender.replaceTrack(newVideoTrack);
-    }
 
   }
+  // Add these refs at the top with your other refs
+  const segmentationRef = useRef<SelfieSegmentation | null>(null);
+  const processingRef = useRef<boolean>(false);
+  const animationFrameRef = useRef<number | null>(null);
+  const currentVideoTrackRef = useRef<MediaStreamTrack | null>(null);
+  const originalVideoTrackRef = useRef<MediaStreamTrack | null>(null);
+
+  // Update the createBlurTrack function
+  function createBlurTrack(
+    stream: MediaStream,
+    background: string
+  ): Promise<MediaStreamTrack> {
+    return new Promise((resolve) => {
+      // Stop any existing processing
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+
+      // Clean up previous segmentation
+      if (segmentationRef.current) {
+        segmentationRef.current.close();
+        segmentationRef.current = null;
+      }
+
+      const video = document.createElement("video");
+      video.srcObject = stream;
+      video.muted = true;
+      video.playsInline = true;
+
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        console.error("Failed to get canvas context");
+        return;
+      }
+
+      const segmentation = new SelfieSegmentation({
+        locateFile: (file) =>
+          `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`,
+      });
+
+      segmentationRef.current = segmentation;
+      segmentation.setOptions({ modelSelection: 1 });
+
+      let firstFrame = false;
+      let bgImageLoaded = false;
+      const bgImage = new Image();
+
+      // Preload background image if needed
+      if (background !== "blur" && background !== "none") {
+        if (background === "office-room") {
+          bgImage.src = roomBg;
+        } else if (background === "beach") {
+          bgImage.src = beachBg;
+        } else if (background === "forest") {
+          bgImage.src = forestBg;
+        }
+
+        bgImage.onload = () => {
+          bgImageLoaded = true;
+        };
+      } else {
+        bgImageLoaded = true; // No image needed for blur mode
+      }
+
+      segmentation.onResults((res) => {
+        const vw = video.videoWidth;
+        const vh = video.videoHeight;
+        if (!vw || !vh || !bgImageLoaded) return;
+
+        canvas.width = vw;
+        canvas.height = vh;
+
+        // Clear canvas
+        ctx.clearRect(0, 0, vw, vh);
+
+        if (background === "blur") {
+          // Draw blurred background
+          ctx.filter = "blur(12px)";
+          ctx.drawImage(video, 0, 0, vw, vh);
+          ctx.filter = "none";
+        } else if (background !== "none") {
+          // Draw background image
+          ctx.drawImage(bgImage, 0, 0, vw, vh);
+        } else {
+          // For "none", just draw the video directly
+          ctx.drawImage(video, 0, 0, vw, vh);
+        }
+
+        if (background !== "none") {
+          // Remove person from background (cut out)
+          ctx.globalCompositeOperation = "destination-out";
+          ctx.drawImage(res.segmentationMask, 0, 0, vw, vh);
+
+          // Draw sharp person on top
+          ctx.globalCompositeOperation = "destination-over";
+          ctx.drawImage(video, 0, 0, vw, vh);
+
+          // Reset composite operation
+          ctx.globalCompositeOperation = "source-over";
+        }
+
+        if (!firstFrame) {
+          firstFrame = true;
+          const blurredStream = canvas.captureStream(30);
+          resolve(blurredStream.getVideoTracks()[0]);
+        }
+      });
+
+      let last = 0;
+      const FPS = 15;
+
+      function processFrame(ts: number) {
+        if (!processingRef.current || !segmentationRef.current) return;
+
+        if (ts - last > 1000 / FPS) {
+          last = ts;
+          try {
+            segmentation.send({ image: video });
+          } catch (error) {
+            console.error("Segmentation error:", error);
+            stopProcessing();
+          }
+        }
+
+        if (processingRef.current) {
+          animationFrameRef.current = requestAnimationFrame(processFrame);
+        }
+      }
+
+      function stopProcessing() {
+        processingRef.current = false;
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
+          animationFrameRef.current = null;
+        }
+      }
+
+      video.onloadedmetadata = () => {
+        video.play().catch(console.error);
+        processingRef.current = true;
+        animationFrameRef.current = requestAnimationFrame(processFrame);
+      };
+
+      video.onerror = (error) => {
+        console.error("Video error:", error);
+        stopProcessing();
+      };
+    });
+  }
+
+
+
+
+
+  // Handle resolution change
+  useEffect(() => {
+    if (!isCallActive || !localStreamRef.current) return;
+
+    const changeResolution = async () => {
+      try {
+        addDebugLog(`🔄 Changing resolution to ${resolution}...`);
+        const constraints = resolutionConstraints[resolution] || resolutionConstraints["720p"];
+
+        const newStream = await navigator.mediaDevices.getUserMedia({
+          video: constraints,
+          audio: true
+        });
+
+        const newVideoTrack = newStream.getVideoTracks()[0];
+
+        // Replace track in local stream
+        const oldVideoTrack = localStreamRef.current?.getVideoTracks()[0];
+        if (oldVideoTrack && localStreamRef.current) {
+          localStreamRef.current.removeTrack(oldVideoTrack);
+          oldVideoTrack.stop();
+        }
+        localStreamRef.current?.addTrack(newVideoTrack);
+
+        // Update local video element
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = newStream;
+        }
+
+        // Replace track in peer connection
+        const sender = peerConnectionRef.current
+          ?.getSenders()
+          .find((s) => s.track?.kind === "video");
+
+        if (sender) {
+          await sender.replaceTrack(newVideoTrack);
+
+          const parameters = sender.getParameters();
+          if (!parameters.encodings) {
+            parameters.encodings = [{}];
+          }
+
+          parameters.encodings[0].maxBitrate = resolutionBitrates[resolution] || resolutionBitrates["720p"];
+          await sender.setParameters(parameters);
+
+          addDebugLog(`✅ Resolution updated to ${resolution} with bitrate ${parameters.encodings[0].maxBitrate}`);
+        }
+
+      } catch (error) {
+        console.error("Error changing resolution:", error);
+        addDebugLog(`❌ Error changing resolution: ${error}`);
+      }
+    };
+
+    changeResolution();
+  }, [resolution]);
+
+  // Update the background useEffect with proper cleanup
+  useEffect(() => {
+    const applyBackground = async () => {
+      if (!localStreamRef.current || !peerConnectionRef.current) return;
+
+      const baseStream = localStreamRef.current;
+      const originalVideoTrack = baseStream.getVideoTracks()[0];
+
+      // Store original track if not already stored
+      if (!originalVideoTrackRef.current) {
+        originalVideoTrackRef.current = originalVideoTrack.clone();
+      }
+
+      // Stop current processing
+      stopBackgroundProcessing();
+
+      // Get sender for remote
+      const sender = peerConnectionRef.current
+        .getSenders()
+        .find((s) => s.track?.kind === "video");
+
+      let finalTrack: MediaStreamTrack;
+
+      if (background !== "none") {
+        try {
+          // Create new track with background effect
+          finalTrack = await createBlurTrack(baseStream, background);
+          currentVideoTrackRef.current = finalTrack;
+
+          // Update local preview
+          const previewStream = new MediaStream([
+            finalTrack,
+            ...baseStream.getAudioTracks(),
+          ]);
+
+          if (localVideoRef.current) {
+            localVideoRef.current.srcObject = previewStream;
+          }
+
+          // Update remote sender
+          if (sender) {
+            await sender.replaceTrack(finalTrack);
+          } else {
+            peerConnectionRef.current.addTrack(finalTrack, baseStream);
+          }
+        } catch (error) {
+          console.error("Failed to apply background:", error);
+          // Fallback to original track
+          finalTrack = originalVideoTrack;
+        }
+      } else {
+        // Revert to original camera
+        finalTrack = originalVideoTrack;
+
+        // Update local preview
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = baseStream;
+        }
+
+        // Update remote sender
+        if (sender) {
+          await sender.replaceTrack(originalVideoTrack);
+        }
+      }
+
+      // Clean up old track if it exists
+      if (currentVideoTrackRef.current && currentVideoTrackRef.current !== finalTrack) {
+        currentVideoTrackRef.current.stop();
+      }
+
+      currentVideoTrackRef.current = finalTrack;
+    };
+
+    applyBackground();
+
+    // Cleanup function
+    return () => {
+      stopBackgroundProcessing();
+    };
+  }, [background]);
+  // Add this cleanup function
+  const stopBackgroundProcessing = () => {
+    processingRef.current = false;
+
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+
+    if (segmentationRef.current) {
+      segmentationRef.current.close();
+      segmentationRef.current = null;
+    }
+  };
+
+
+
+
+
+
+
 
   return (
     <div className="min-h-screen  bg-gray-900">
@@ -1357,8 +1639,8 @@ const VideoCallPage: React.FC = () => {
               setLayout={setLayout}
               resolution={resolution}
               setResolution={setResolution}
-              micVolume={micVolume}
-              setMicVolume={setMicVolume}
+              background={background}
+              setBackground={setBackground}
             />
           </div>
         )}
