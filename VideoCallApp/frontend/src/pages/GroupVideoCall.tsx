@@ -2,7 +2,7 @@ import { Device } from "mediasoup-client";
 import { useEffect, useRef, useState } from "react";
 import { io, Socket } from "socket.io-client";
 import VideoConnectLogo from "../components/VideoConnectLogo";
-import { FiShare2, FiCopy, FiSettings, FiMic, FiMicOff, FiVideo, FiVideoOff, FiMonitor} from "react-icons/fi";
+import { FiShare2, FiCopy, FiSettings, FiMic, FiMicOff, FiVideo, FiVideoOff, FiMonitor } from "react-icons/fi";
 const GroupVideoCall = () => {
   const socketRef = useRef<Socket | null>(null);
   const [buttonClicked, setButtonClicked] = useState(false);
@@ -339,6 +339,7 @@ const GroupVideoCall = () => {
           videoEle.playsInline = true;
           videoEle.muted = true;
           videoEle.classList.add("video-css");
+          videoEle.style.transform = "scaleX(-1)";
 
           // Mic icon 
           const micIconEle = document.createElement("div");
@@ -676,7 +677,8 @@ const GroupVideoCall = () => {
         >
           <video
             ref={localMediaRef}
-            className="rounded-lg bg-gray-800  object-cover block-inline"
+            className="video-css rounded-lg bg-gray-800 object-cover block-inline"
+            style={{ transform: "scaleX(-1)" }}
             autoPlay
             playsInline
           ></video>

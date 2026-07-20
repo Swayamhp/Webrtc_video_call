@@ -22,6 +22,12 @@ const GroupVideoCall = () => {
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [isShareScreenStarted, setScreenShareStarted] = useState(false);
   let remoteScreenShareStream = useRef<MediaStream>(null);
+  const isJoinedRef = useRef(false);
+  const consumedProducerIdsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    isJoinedRef.current = buttonClicked;
+  }, [buttonClicked]);
 
 
 
@@ -112,17 +118,44 @@ const GroupVideoCall = () => {
 
   useEffect(() => {
     if (socketRef.current && buttonClicked) {
-      if (deviceRef.current?.loaded) {
-        startCameraAudio()
-      }
+      // Re-join on explicit Join click so server re-sends active producers.
+      socketRef.current.emit("join-room", { roomId: currentRoomId }, async (data: any) => {
+        if (!deviceRef.current) {
+          const device = new Device();
+          if (!device.loaded) {
+            await device.load({ routerRtpCapabilities: data.rtpCapabilities });
+          }
+          deviceRef.current = device;
+        }
+
+        if (!localMediaStarted) {
+          startCameraAudio();
+        }
+      })
     }
 
-  }, [buttonClicked])
+  }, [buttonClicked, currentRoomId, localMediaStarted])
+
+  useEffect(() => {
+    if (!buttonClicked && videoContainerRef.current) {
+      // Remove remote participant tiles when leaving the call.
+      videoContainerRef.current
+        .querySelectorAll("[id^='wrapper-']")
+        .forEach((node) => node.remove());
+      consumedProducerIdsRef.current.clear();
+    }
+  }, [buttonClicked]);
+
   let checkProducerComing = useRef(false)
   useEffect(() => {
     if (checkProducerComing.current == true) return;
     checkProducerComing.current = true;
     socketRef.current?.on("consume-all-producer", ({ producer }) => {
+      if (!isJoinedRef.current) return;
+      if (!producer?.producerId) return;
+      if (producer.producerSocketId === socketRef.current?.id) return;
+      if (consumedProducerIdsRef.current.has(producer.producerId)) return;
+      consumedProducerIdsRef.current.add(producer.producerId);
       console.log("Console all producers are:", producer);
       async function reciveTransportFun() {
         await reciveTransportCamera(currentRoomId, producer.producerId);
@@ -138,6 +171,7 @@ const GroupVideoCall = () => {
 
       socketRef.current.on("producer-closed", (producerId) => {
         console.log("The producer closed of socket id", producerId);
+        consumedProducerIdsRef.current.delete(producerId);
         const videoEle = document.getElementById(`wrapper-${producerId}`)
         if (videoEle) {
           console.log("The video element ", videoEle);
@@ -164,12 +198,17 @@ const GroupVideoCall = () => {
     newProducerListenAdded.current = true;
 
     socketRef.current?.on("newProducer", async ({ producerId, producerSocketId, kind }) => {
+      if (!isJoinedRef.current) return;
+      if (producerSocketId === socketRef.current?.id) return;
+      if (consumedProducerIdsRef.current.has(producerId)) return;
+      consumedProducerIdsRef.current.add(producerId);
       console.log("This is producerid,socketid,kind", producerId, producerSocketId, kind);
 
       await reciveTransportCamera(currentRoomId, producerId);
     })
 
     socketRef.current?.on("newScreenShare", async ({ producerId, producerSocketId, kind }) => {
+      if (!isJoinedRef.current) return;
       console.log("This is producerid,socketid,kind", producerId, producerSocketId, kind);
       await reciveTransportScreen(currentRoomId, producerId);
     })
@@ -182,7 +221,6 @@ const GroupVideoCall = () => {
   async function reciveTransportScreen(currentRoomId: any, producerId: any) {
     return new Promise((resolve) => {
       socketRef.current?.emit("createRcvTransportScreen", { roomId: currentRoomId }, (data: any) => {
-        console.log("getting data************", data)
         const transport = deviceRef.current?.createRecvTransport(data)
 
         transport?.on("connect", ({ dtlsParameters }, callback, errback) => {
@@ -276,6 +314,9 @@ const GroupVideoCall = () => {
     })
   }
   async function reciveTransportCamera(currentRoomId: any, producerId: any) {
+    if (document.getElementById(`wrapper-${producerId}`)) {
+      return;
+    }
     return new Promise((resolve) => {
       socketRef.current?.emit("createRcvTransportCamera", { roomId: currentRoomId }, (data: any) => {
         console.log("This data", data);
@@ -335,7 +376,8 @@ const GroupVideoCall = () => {
           videoEle.autoplay = true;
           videoEle.playsInline = true;
           videoEle.muted = true; // Changed to false to hear remote audio
-          videoEle.className = "w-full h-full object-cover rounded-xl";
+          videoEle.className = "video-css w-full h-full object-cover rounded-xl";
+          videoEle.style.transform = "scaleX(-1)";
 
           // User label - exactly like local but with different text
           const userLabelEle = document.createElement("div");
@@ -717,7 +759,8 @@ const GroupVideoCall = () => {
             <div className="relative rounded-xl overflow-hidden bg-gray-800 aspect-video min-h-[200px] group border-2 border-gray-600 hover:border-blue-400 transition-all duration-300 shadow-lg">
               <video
                 ref={localMediaRef}
-                className="w-full h-full object-cover"
+                className="video-css w-full h-full object-cover"
+                style={{ transform: "scaleX(-1)" }}
                 autoPlay
                 playsInline
               />
@@ -761,8 +804,8 @@ const GroupVideoCall = () => {
             <button
               onClick={handleVideoToggle}
               className={`flex flex-col items-center  p-3 rounded-2xl transition-all duration-300 transform hover:scale-105 ${isVideoEnabled
-                  ? "bg-gray-700 hover:bg-gray-600 text-white shadow-lg"
-                  : "bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/25"
+                ? "bg-gray-700 hover:bg-gray-600 text-white shadow-lg"
+                : "bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/25"
                 }`}
             >
               {isVideoEnabled ?
@@ -778,8 +821,8 @@ const GroupVideoCall = () => {
             <button
               onClick={handleAudioToggle}
               className={`flex flex-col items-center p-3 rounded-2xl transition-all duration-300 transform hover:scale-105 ${isAudioEnabled
-                  ? "bg-gray-700 hover:bg-gray-600 text-white shadow-lg"
-                  : "bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/25"
+                ? "bg-gray-700 hover:bg-gray-600 text-white shadow-lg"
+                : "bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/25"
                 }`}
             >
               {isAudioEnabled ?
@@ -795,8 +838,8 @@ const GroupVideoCall = () => {
             <button
               onClick={() => setButtonClicked(!buttonClicked)}
               className={`flex flex-col items-center  px-4 py-4 rounded-2xl transition-all duration-300 transform hover:scale-105 shadow-2xl ${buttonClicked
-                  ? "bg-red-500 hover:bg-red-600 text-white shadow-red-500/25"
-                  : "bg-green-500 hover:bg-green-600 text-white shadow-green-500/25"
+                ? "bg-red-500 hover:bg-red-600 text-white shadow-red-500/25"
+                : "bg-green-500 hover:bg-green-600 text-white shadow-green-500/25"
                 } font-semibold`}
             >
               <div className="flex items-center gap-2">
@@ -811,8 +854,8 @@ const GroupVideoCall = () => {
             <button
               onClick={startScreenSharing}
               className={`flex flex-col items-center p-3 rounded-2xl transition-all duration-300 transform hover:scale-105 ${isScreenSharing
-                  ? "bg-blue-500 hover:bg-blue-600 text-white shadow-lg shadow-blue-500/25"
-                  : "bg-gray-700 hover:bg-gray-600 text-white shadow-lg"
+                ? "bg-blue-500 hover:bg-blue-600 text-white shadow-lg shadow-blue-500/25"
+                : "bg-gray-700 hover:bg-gray-600 text-white shadow-lg"
                 }`}
             >
               <FiMonitor className="w-6 h-6" />
